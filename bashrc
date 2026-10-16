@@ -78,6 +78,13 @@ fi
 # of the dircolors LS_COLORS set above.
 unset LS_COLORS
 
+# Terminal capability: the container (and zellij's panes) don't advertise
+# truecolour — COLORTERM is unset and TERM is only xterm-256color — so tools
+# see a 256-colour terminal and approximate the Catppuccin Frappé hex palette
+# instead of emitting it faithfully. Advertise truecolour for every tool that
+# honours it (pi, jjui, opencode, leaf, …).
+export COLORTERM=truecolor
+
 # fzf: Catppuccin Frappé colours
 export FZF_DEFAULT_OPTS="--color=bg+:#414559,bg:#303446,spinner:#f2d5cf,hl:#e78284,fg:#c6d0f5,header:#e78284,info:#ca9ee6,pointer:#f2d5cf,marker:#babbf1,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#e78284,selected-bg:#51576d,border:#737994,label:#c6d0f5"
 

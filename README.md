@@ -63,7 +63,8 @@ docs/                   documentation
 ## Version control
 
 This is a [Jujutsu (jj)](https://jj-vcs.dev/) repository, colocated with git.
-Drive changes with jj (`jj status`, `jj commit`, `jj git push -b main`).
+Drive changes with jj (`jj status`, `jj commit`, `jj git push -b main`); see
+[Usage § Commit and push to GitHub](./docs/usage.md#commit-and-push-to-github-jj).
 
 ## License
 

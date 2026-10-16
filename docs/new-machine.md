@@ -70,6 +70,7 @@ mise bootstrap --adopt <user>/<repo>
 | Editing a file does not change the repo | Check the mode; with `copy` mode run `mise dot add --changed`. |
 | `mise: command not found` in a new shell | Add `eval "$(mise activate bash)"` to `~/.bashrc` (this repo's `bashrc` already does). |
 | `bat` shows its default theme | The theme cache is stale or missing: run `bat cache --build`. |
+| Colours look washed out or 256-colour approximated in `pi`/`jjui`/`opencode`/`leaf` | The container does not advertise truecolour (`COLORTERM` unset, `TERM=xterm-256color`). `bashrc` exports `COLORTERM=truecolor`; make sure the shell sources this `bashrc` and the tool inherits it. |
 | `eza` shows dircolors colours, not Catppuccin Frappé | `LS_COLORS` is overriding the theme — `bashrc` unsets it, so make sure your shell actually sources this `bashrc`. |
 
 ## What gets deployed where

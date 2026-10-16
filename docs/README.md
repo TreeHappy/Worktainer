@@ -16,7 +16,7 @@ whole environment with `mise install && mise dot apply`.
 
 ```
 mise.toml               tools + [dotfiles] entries
-bashrc                  source for ~/.bashrc (aliases, fzf colours, mise/starship/… init)
+bashrc                  source for ~/.bashrc (aliases, truecolour, fzf colours, mise/starship/… init)
 atuin/config.toml       source for ~/.config/atuin/config.toml
 bat/                    bat config + vendored Catppuccin Frappé theme
 eza/theme.yml           source for ~/.config/eza/theme.yml (Catppuccin Frappé)
@@ -37,7 +37,9 @@ docs/                   this documentation
 ## Version control
 
 The repo is a [Jujutsu (jj)](https://jj-vcs.dev/) repository, colocated with git
-(`.jj` + `.git`). Drive changes with `jj` (`jj status`, `jj commit -m "..."`).
+(`.jj` + `.git`). Drive changes with `jj` (`jj status`, `jj commit -m "..."`),
+and push to the GitHub remote (`origin`) with jj's bookmarks — see
+[Usage § Commit and push to GitHub](./usage.md#commit-and-push-to-github-jj).
 Only mise's optional dotfile *history* feature (`mise dot save/history/rollback`)
 shells out to the git binary — colocation already provides the `.git` store it
 expects.

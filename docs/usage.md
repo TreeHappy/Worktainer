@@ -113,6 +113,63 @@ jj status
 jj commit -m "bashrc: add starship prompt"
 ```
 
+## Commit and push to GitHub (jj)
+
+This is a [Jujutsu](https://jj-vcs.dev/) repo colocated with Git, and `origin`
+points at the GitHub remote. jj has no branches of its own — the Git branch
+`main` is a **bookmark** that tracks its `main@origin` counterpart. The everyday
+loop is:
+
+```sh
+cd /workspace
+
+jj status                     # what changed in the working copy
+jj commit -m "docs: …"        # save the working copy as a commit, start a new one
+jj bookmark set main -r @-    # point main at the commit you just made
+jj git push --bookmark main   # push main (and its ancestors) to origin
+```
+
+After a push jj may warn that the working-copy commit became immutable; that is
+normal — it creates a fresh empty `@` to keep working in.
+
+Handy variations:
+
+| Task | Command |
+| ---- | ------- |
+| Push a bookmark and its ancestors | `jj git push -b main` (`-b` = `--bookmark`) |
+| Push every bookmark and tag | `jj git push --all` |
+| Push to a specific remote | `jj git push --remote origin -b main` |
+| Compare local and remote | `jj bookmark list --all-remotes` |
+| Fetch the latest remote state | `jj git fetch` |
+
+Notes:
+
+- **A bookmark must track its remote branch** before `jj git push` will update
+  it. `jj bookmark set` after a `jj git fetch` normally does this for you; on a
+  fresh clone check `jj bookmark list --all-remotes` and run
+  `jj bookmark track main@origin` if the `@origin` line is missing.
+- **If a push is rejected** because the remote moved first, fetch and rebase onto
+  the remote, then push again:
+
+  ```sh
+  jj git fetch
+  jj rebase -d main@origin
+  jj git push -b main
+  ```
+
+- **`jj git push` does not use `git`'s checkout** — it pushes the bookmark's
+  commit and everything it reaches, so you never switch branches. For the full
+  story see the jj docs on
+  [bookmarks](https://docs.jj-vcs.dev/latest/bookmarks/).
+
+To attach a brand-new checkout to the GitHub repo:
+
+```sh
+jj git remote add origin https://github.com/TreeHappy/Worktainer.git
+jj git fetch
+jj bookmark track main@origin
+```
+
 ## Remove a dotfile
 
 1. Delete its `[dotfiles]` entry from `mise.toml`.

@@ -71,6 +71,7 @@ alias ls='eza'; alias ll='eza -l --git'; alias la='eza -la'; alias lt='eza --tre
 alias cat='bat --paging=never'
 
 unset LS_COLORS                       # let eza use its own Catppuccin Frappé theme
+export COLORTERM=truecolor            # advertise truecolour to pi, jjui, opencode, …
 export FZF_DEFAULT_OPTS="--color=…"   # Catppuccin Frappé colours for fzf
 export EDITOR=nvim
 export VISUAL=nvim
@@ -168,7 +169,7 @@ follow the palette's [style guide](https://github.com/catppuccin/catppuccin/blob
 | `yazi` | vendored `catppuccin-frappe` flavor | `yazi/theme.toml`, `yazi/flavors/` |
 | `zellij` | built-in `catppuccin-frappe` theme | `zellij/config.kdl` |
 
-Two notes:
+Three notes:
 
 - **bat keeps a compiled theme cache.** After any change to `bat/themes/` (and on
   a fresh machine after `mise dot apply`) run it once, or bat falls back to its
@@ -182,6 +183,10 @@ Two notes:
 - **eza ignores its theme while `LS_COLORS` is set**, which the stock Ubuntu
   `~/.bashrc` sets from `dircolors` — hence the `unset LS_COLORS` line (that
   block is inherited from Ubuntu's default bashrc).
+- **Many themes need truecolour.** In the container `COLORTERM` is unset and
+  `TERM` is only `xterm-256color`, so truecolour-aware tools (`pi`, `jjui`,
+  `opencode`, `leaf`) would approximate the Frappé hex palette with 256 colours.
+  `bashrc` exports `COLORTERM=truecolor` so they emit it faithfully.
 
 ### Not themed
 
