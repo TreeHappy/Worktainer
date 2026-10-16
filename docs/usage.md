@@ -94,9 +94,9 @@ mise dot unapply ~/.bashrc     # removes the deployed target
 ## Shell history (atuin)
 
 `~/.config/atuin/config.toml` is managed here, so the settings are versioned.
-Atuin's actual history database, encryption key, and login/sync state live under
-`~/.local/share/atuin/` and are **not** tracked — sign in per machine with
-`atuin login` / `atuin register`. The bash key binding (Ctrl-R) comes from
+Atuin runs in **local-only** mode (`auto_sync = false`, no sync login): history
+is kept in the SQLite database at `~/.local/share/atuin/history.db`, which is
+not tracked by this repo. The bash key binding (Ctrl-R) comes from
 `eval "$(atuin init bash)"` in the tracked `bashrc`.
 
 ## Sharing history between machines (optional)
