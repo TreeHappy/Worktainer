@@ -38,6 +38,8 @@ expects.
 | `~/.config/atuin/config.toml`     | `atuin/config.toml` | `symlink` (default) |
 | `~/.config/zellij/config.kdl`     | `zellij/config.kdl` | `symlink` (default) |
 
+Zellij uses its built-in `catppuccin-frappe` theme, set in `zellij/config.kdl`.
+
 ## Quick start
 
 ```sh
