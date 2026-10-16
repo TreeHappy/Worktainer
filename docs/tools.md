@@ -159,7 +159,7 @@ follow the palette's [style guide](https://github.com/catppuccin/catppuccin/blob
 | `eza` | native `theme.yml` (its own hex palette) | `eza/theme.yml` |
 | `fzf` | `--color=…` colourspec via `FZF_DEFAULT_OPTS` | `bashrc` |
 | `hunk` | built-in `catppuccin-frappe` theme | `hunk/config.toml` |
-| `jjui` | theme file (from the `tinted-jjui` base16 port) | `jjui/config.toml`, `jjui/themes/` |
+| `jjui` | hand-written theme following the style guide | `jjui/config.toml`, `jjui/themes/` |
 | `leaf` | hand-written theme (leaf's own `theme.toml` format) | `leaf/config.toml`, `leaf/themes/` |
 | `opencode` | built-in `catppuccin-frappe` name | `opencode/cli.json` |
 | `pi` | vendored `catppuccin-frappe` theme (from the `catppuccin-pi-theme` npm package) | `pi/settings.json`, `pi/themes/` |
