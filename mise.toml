@@ -2,22 +2,31 @@
 atuin = "latest"
 bat = "latest"
 carapace = "latest"
+duf = "latest"
+dust = "latest"
 eza = "latest"
 fd = "latest"
+fzf = "latest"
 gh = "latest"
 "github:RivoLink/leaf" = "latest"
 hunk = "latest"
 jj = "latest"
 jjui = "latest"
+jq = "latest"
 neovim = "latest"
 node = "latest"
 opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
+pi = "latest"
+"aqua:dalance/procs" = "latest"
 ripgrep = "latest"
 starship = "latest"
 yazi = "latest"
+yq = "latest"
 zellij = "latest"
+zoxide = "latest"
 
 [dotfiles]
 "~/.bashrc" = { source = "bashrc" }
 "~/.config/atuin/config.toml" = { source = "atuin/config.toml" }
+"~/.config/yazi" = { source = "yazi", mode = "symlink-each" }
 "~/.config/zellij/config.kdl" = { source = "zellij/config.kdl" }

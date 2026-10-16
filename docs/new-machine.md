@@ -24,6 +24,12 @@ mise dot apply          # deploy the dotfiles
 mise dot status         # confirm: "N entries up to date"
 ```
 
+Set nvim (installed via mise) as git's default editor:
+
+```sh
+git config --global core.editor nvim
+```
+
 Activate mise in your shell (already done if you copied the tracked
 `~/.bashrc`), then open a new shell.
 
@@ -60,4 +66,5 @@ mise bootstrap --adopt <user>/<repo>
 | ----------------------------- | ------------------- |
 | `~/.bashrc`                   | `bashrc`            |
 | `~/.config/atuin/config.toml` | `atuin/config.toml` |
+| `~/.config/yazi` (`symlink-each`) | `yazi`          |
 | `~/.config/zellij/config.kdl` | `zellij/config.kdl` |

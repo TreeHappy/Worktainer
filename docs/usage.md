@@ -68,9 +68,40 @@ Flags worth knowing:
 ### Choosing a mode
 
 - `symlink` (default) — link a file or an entire directory into place.
+- `symlink-each` — link each file inside a source **directory** separately,
+  leaving the target a real directory. Use this when other tools write into the
+  same directory. Accepts `exclude`, `manifest`, `dot_prefix`, and `relative`.
 - `copy` — keep a real file at the target; useful when an app rewrites it.
   Copy changes back to the repo with `mise dot add --changed`.
 - `template` — generate a machine-specific file from a template.
+
+### Deploy a whole directory
+
+`source` may be a directory, so one entry can cover a tree instead of one entry
+per file — the Yazi config in this repo does exactly that:
+
+```toml
+[dotfiles]
+"~/.config/yazi" = { source = "yazi", mode = "symlink-each" }
+```
+
+`mise dot apply` walks `yazi/` and links every file it finds. There is no glob
+in the **target** (targets are concrete paths); globs are used to filter the
+walk instead, via `exclude` (skipped) and `include` (tracked directories only):
+
+```toml
+"~/.config/yazi" = {
+  source = "yazi",
+  mode = "symlink-each",
+  exclude = ["*.md", ".git"],
+}
+```
+
+Patterns are relative to the entry's directory, `*` does not cross `/`, `**`
+does, and a pattern matching a directory covers everything beneath it. To deploy
+a whole tree but hand out only parts of it to a given machine, use
+[dotfile groups](https://mise.jdx.dev/dotfiles/groups.html)
+(`[dotfile_groups]`) instead of a plain entry.
 
 ## Edit a dotfile
 
