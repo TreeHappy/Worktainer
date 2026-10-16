@@ -21,6 +21,14 @@ zellij/config.kdl   source for ~/.config/zellij/config.kdl
 docs/               this documentation
 ```
 
+## Version control
+
+The repo is a [Jujutsu (jj)](https://jj-vcs.dev/) repository, colocated with git
+(`.jj` + `.git`). Drive changes with `jj` (`jj status`, `jj commit -m "..."`).
+Only mise's optional dotfile *history* feature (`mise dot save/history/rollback`)
+shells out to the git binary — colocation already provides the `.git` store it
+expects.
+
 ## Managed dotfiles
 
 | Target                           | Source             | Mode              |

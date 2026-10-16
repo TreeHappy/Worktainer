@@ -13,7 +13,8 @@ curl https://mise.run | sh
 ## Install the dotfiles
 
 ```sh
-git clone <repo-url> ~/src/dotfiles
+# Clone with jj (or `git clone`, which works on this colocated repo)
+jj git clone <repo-url> ~/src/dotfiles
 cd ~/src/dotfiles
 
 mise trust              # project configs are ignored until trusted

@@ -74,8 +74,13 @@ Flags worth knowing:
 
 ## Edit a dotfile
 
-Edit it directly (`$EDITOR ~/.bashrc`) and commit the change in the repo — the
-symlink means the repo file is already updated.
+Edit it directly (`$EDITOR ~/.bashrc`) and commit the change with jj — the
+symlink means the repo file is already updated:
+
+```sh
+jj status
+jj commit -m "bashrc: add starship prompt"
+```
 
 ## Remove a dotfile
 
