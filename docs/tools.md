@@ -40,7 +40,7 @@ The list mirrors `[tools]` in `mise.toml`, alphabetically.
 | `pi` | AI coding assistant with read/bash/edit/write tools | Catppuccin Frappé theme (vendored) in `pi/` |
 | `procs` | Modern `ps` replacement (process viewer) | Catppuccin Frappé 256-colour `[style]` in `procs/config.toml` |
 | `ripgrep` | Fast recursive search (`rg`) | — |
-| `starship` | Cross-shell prompt | `starship init bash`; Catppuccin Frappé palette in `starship.toml` |
+| `starship` | Cross-shell prompt | `starship init bash`; Catppuccin Frappé palette in `starship.toml`; prompt shows **jj** state (git modules disabled) |
 | `yazi` | Terminal file manager | Config in `yazi/`; Catppuccin Frappé flavor |
 | `yq` | YAML/JSON/XML processor | — |
 | `zellij` | Terminal multiplexer with layouts and sessions | Auto-starts (last line of `bashrc`); config in `zellij/config.kdl` |
@@ -89,6 +89,23 @@ The `mise activate`/`completion` lines use an explicit path
 (`$HOME/.local/bin/mise`, falling back to `mise` on `PATH`) because they run
 before mise is on `PATH` — a per-user install lives in `~/.local/bin`, the same
 place the Docker image puts it.
+
+### jj prompt
+
+Starship has no native Jujutsu support, so `starship.toml` replaces the built-in
+git modules (`git_branch`, `git_status` are `disabled = true`) with two custom
+modules that call `jj`:
+
+- `custom.jj` — the current bookmark (or the short change id when the working
+  copy has no bookmark), plus `conflict`/`divergent`/`immutable` flags when
+  present.
+- `custom.jj_status` — the change summary (`<files>f <added>+ <removed>-`),
+  hidden when the change is empty.
+
+Both pass `--ignore-working-copy`: this keeps the prompt fast and stops it from
+snapshotting or locking the repo. The state shown is therefore the last
+snapshot, which any `jj` command refreshes. Adapted from the
+[jj Starship wiki](https://github.com/jj-vcs/jj/wiki/Starship).
 
 ## MCP servers
 
@@ -147,7 +164,7 @@ follow the palette's [style guide](https://github.com/catppuccin/catppuccin/blob
 | `opencode` | built-in `catppuccin-frappe` name | `opencode/cli.json` |
 | `pi` | vendored `catppuccin-frappe` theme (from the `catppuccin-pi-theme` npm package) | `pi/settings.json`, `pi/themes/` |
 | `procs` | `[style]` mapping — 256-colour approximation (procs has no hex support) | `procs/config.toml` |
-| `starship` | palette + per-module colour overrides | `starship.toml` |
+| `starship` | palette + per-module colour overrides; jj custom modules (git modules disabled) | `starship.toml` |
 | `yazi` | vendored `catppuccin-frappe` flavor | `yazi/theme.toml`, `yazi/flavors/` |
 | `zellij` | built-in `catppuccin-frappe` theme | `zellij/config.kdl` |
 

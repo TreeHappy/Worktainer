@@ -27,7 +27,7 @@ opencode/opencode.json  source for ~/.config/opencode/opencode.json (MCP servers
 opencode/cli.json       source for ~/.config/opencode/cli.json (TUI settings)
 pi/                     pi settings + vendored Catppuccin Frappé theme
 procs/config.toml       source for ~/.config/procs/config.toml (Catppuccin Frappé)
-starship.toml           source for ~/.config/starship.toml (Catppuccin Frappé palette)
+starship.toml           source for ~/.config/starship.toml (Catppuccin Frappé palette, jj prompt)
 yazi/                   Yazi file manager config (theme = Catppuccin Frappé)
 yazi/flavors/           vendored Catppuccin Frappé flavor
 zellij/config.kdl       source for ~/.config/zellij/config.kdl

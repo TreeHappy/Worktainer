@@ -5,8 +5,8 @@ palette = "catppuccin_frappe"
 
 format = """
 $directory\
-$git_branch\
-$git_status\
+${custom.jj}\
+${custom.jj_status}\
 $nodejs\
 $rust\
 $golang\
@@ -25,14 +25,54 @@ style = "bold lavender"
 truncation_length = 3
 truncate_to_repo = true
 
-[git_branch]
-symbol = " "
+# ── jj (Jujutsu) — replaces the built-in git modules ────────────
+# Starship has no native jj support, so these modules shell out to `jj`.
+# `--ignore-working-copy` keeps the prompt fast and free of side effects; the
+# working-copy state shown is therefore the last snapshot (any jj command
+# refreshes it). https://github.com/jj-vcs/jj/wiki/Starship
+[custom.jj]
+description = "Current jj bookmark, or change id when there is none"
+when = "jj --ignore-working-copy root"
+symbol = "jj "
 style = "bold mauve"
-format = "[$symbol$branch]($style)"
+format = "[$symbol$output]($style) "
+command = '''
+jj log -r @ -n 1 --ignore-working-copy --no-graph -T '
+  separate(" ",
+    if(bookmarks,
+      bookmarks.map(|b| b.name()).join(" "),
+      change_id.shortest(8)
+    ),
+    if(conflict, "conflict"),
+    if(divergent, "divergent"),
+    if(immutable, "immutable")
+  )
+'
+'''
+
+[custom.jj_status]
+description = "Working-copy change summary (files, insertions, deletions)"
+when = "jj --ignore-working-copy root"
+style = "bold peach"
+format = "([$output]($style) )"
+command = '''
+jj log -r @ -n 1 --ignore-working-copy --no-graph -T '
+  if(empty, "",
+    separate(" ",
+      diff.files().len() ++ "f",
+      diff.stat().total_added() ++ "+",
+      diff.stat().total_removed() ++ "-"
+    )
+  )
+'
+'''
+
+# jj supersedes git at the prompt; keep the built-in git modules disabled.
+[git_branch]
+disabled = true
 
 [git_status]
-style = "bold peach"
-format = "([$all_behind$ahead$deleted$modified$untracked]($style))"
+disabled = true
 
 [nodejs]
 style = "bold green"
