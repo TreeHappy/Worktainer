@@ -6,7 +6,7 @@ This repository is managed with [mise](https://mise.jdx.dev/) using the
 `mise.toml` does two jobs:
 
 - `[tools]` — installs the CLI tools this setup needs (carapace, starship,
-  zellij, neovim, node, jj, …).
+  atuin, zellij, neovim, node, jj, …).
 - `[dotfiles]` — deploys the config files in this repo into `$HOME` as symlinks.
 
 Both are driven by the same `mise.toml`, so a new machine can reproduce the
@@ -17,6 +17,7 @@ whole environment with `mise install && mise dot apply`.
 ```
 mise.toml           tools + [dotfiles] entries
 bashrc              source for ~/.bashrc
+atuin/config.toml   source for ~/.config/atuin/config.toml
 zellij/config.kdl   source for ~/.config/zellij/config.kdl
 docs/               this documentation
 ```
@@ -31,10 +32,11 @@ expects.
 
 ## Managed dotfiles
 
-| Target                           | Source             | Mode              |
-| -------------------------------- | ------------------ | ----------------- |
-| `~/.bashrc`                      | `bashrc`           | `symlink` (default) |
-| `~/.config/zellij/config.kdl`    | `zellij/config.kdl`| `symlink` (default) |
+| Target                            | Source              | Mode              |
+| --------------------------------- | ------------------- | ----------------- |
+| `~/.bashrc`                       | `bashrc`            | `symlink` (default) |
+| `~/.config/atuin/config.toml`     | `atuin/config.toml` | `symlink` (default) |
+| `~/.config/zellij/config.kdl`     | `zellij/config.kdl` | `symlink` (default) |
 
 ## Quick start
 

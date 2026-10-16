@@ -59,4 +59,5 @@ mise bootstrap --adopt <user>/<repo>
 | Target                        | Source              |
 | ----------------------------- | ------------------- |
 | `~/.bashrc`                   | `bashrc`            |
+| `~/.config/atuin/config.toml` | `atuin/config.toml` |
 | `~/.config/zellij/config.kdl` | `zellij/config.kdl` |

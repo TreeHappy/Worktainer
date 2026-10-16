@@ -101,3 +101,4 @@ fi
 eval "$(/root/.local/bin/mise activate bash)" # added by https://mise.run/bash
 eval "$(starship init bash)"
 eval "$(carapace _carapace bash)"
+eval "$(atuin init bash)"

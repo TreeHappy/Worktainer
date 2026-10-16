@@ -91,6 +91,14 @@ jj commit -m "bashrc: add starship prompt"
 mise dot unapply ~/.bashrc     # removes the deployed target
 ```
 
+## Shell history (atuin)
+
+`~/.config/atuin/config.toml` is managed here, so the settings are versioned.
+Atuin's actual history database, encryption key, and login/sync state live under
+`~/.local/share/atuin/` and are **not** tracked — sign in per machine with
+`atuin login` / `atuin register`. The bash key binding (Ctrl-R) comes from
+`eval "$(atuin init bash)"` in the tracked `bashrc`.
+
 ## Sharing history between machines (optional)
 
 Beyond plain git commits, mise can snapshot and sync dotfile history:
