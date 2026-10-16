@@ -31,7 +31,7 @@ The list mirrors `[tools]` in `mise.toml`, alphabetically.
 | `gh` | GitHub CLI (PRs, issues, releases, `gh api`) | — |
 | `leaf` | Terminal Markdown viewer/TUI reader; also `--diff` and `--picker` | Catppuccin Frappé theme (hand-written) in `leaf/` |
 | `hunk` | Terminal diff/log pager for reviewing changesets | Built-in `catppuccin-frappe` theme in `hunk/config.toml` |
-| `jj` | [Jujutsu](https://jj-vcs.dev/) VCS; this repo is a jj + git colocated repo | Repo workflow (`jj status`, `jj commit`) |
+| `jj` | [Jujutsu](https://jj-vcs.dev/) VCS; this repo is a jj + git colocated repo | Repo workflow (`jj status`, `jj commit`); pushing to GitHub in [Jujutsu and GitHub](./jj.md) |
 | `jjui` | Interactive TUI for Jujutsu | Catppuccin Frappé theme in `jjui/` |
 | `jq` | JSON processor | — |
 | `neovim` | Modal editor | `$EDITOR`/`$VISUAL`; also yazi's `edit` opener |

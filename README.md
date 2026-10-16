@@ -56,6 +56,7 @@ docs/                   documentation
 ## Documentation
 
 - [Usage](./docs/usage.md) — add, edit, and remove dotfiles; daily workflow.
+- [Jujutsu and GitHub](./docs/jj.md) — jj concepts, `gh` auth/repo setup, and pushing.
 - [Tools](./docs/tools.md) — every CLI tool in `[tools]` and how it is wired up.
 - [New machine](./docs/new-machine.md) — fresh-machine setup and troubleshooting.
 - [Docs index](./docs/README.md) — overview, layout, and conventions.
@@ -64,7 +65,7 @@ docs/                   documentation
 
 This is a [Jujutsu (jj)](https://jj-vcs.dev/) repository, colocated with git.
 Drive changes with jj (`jj status`, `jj commit`, `jj git push -b main`); see
-[Usage § Commit and push to GitHub](./docs/usage.md#commit-and-push-to-github-jj).
+[Jujutsu and GitHub](./docs/jj.md) for the push workflow.
 
 ## License
 

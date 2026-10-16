@@ -39,7 +39,7 @@ docs/                   this documentation
 The repo is a [Jujutsu (jj)](https://jj-vcs.dev/) repository, colocated with git
 (`.jj` + `.git`). Drive changes with `jj` (`jj status`, `jj commit -m "..."`),
 and push to the GitHub remote (`origin`) with jj's bookmarks — see
-[Usage § Commit and push to GitHub](./usage.md#commit-and-push-to-github-jj).
+[Jujutsu and GitHub](./jj.md).
 Only mise's optional dotfile *history* feature (`mise dot save/history/rollback`)
 shells out to the git binary — colocation already provides the `.git` store it
 expects.
@@ -87,5 +87,6 @@ mise dot status      # confirm everything is applied
 ## Documentation
 
 - [Usage](./usage.md) — add, edit, and remove dotfiles; daily workflow.
+- [Jujutsu and GitHub](./jj.md) — jj concepts, `gh` auth/repo setup, and pushing.
 - [Tools](./tools.md) — every CLI tool in `[tools]` and how it is wired up.
 - [New machine](./new-machine.md) — set up a fresh machine and troubleshooting.
