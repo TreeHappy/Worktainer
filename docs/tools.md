@@ -36,7 +36,7 @@ The list mirrors `[tools]` in `mise.toml`, alphabetically.
 | `jq` | JSON processor | — |
 | `neovim` | Modal editor | `$EDITOR`/`$VISUAL`; also yazi's `edit` opener |
 | `node` | JavaScript runtime | Backs the npm-based tools below |
-| `opencode` | Terminal AI coding agent (`npm:@opencode/cli`, built on install) | — |
+| `opencode` | Terminal AI coding agent (`npm:@opencode/cli`, built on install) | Global config in `opencode/opencode.json` (MCP servers below), TUI settings in `opencode/cli.json` (theme `catppuccin-frappe`) |
 | `pi` | AI coding assistant with read/bash/edit/write tools | — |
 | `procs` | Modern `ps` replacement (process viewer) | — |
 | `ripgrep` | Fast recursive search (`rg`) | — |
@@ -83,6 +83,45 @@ eval "$(zoxide init bash)"        # z / zi
 
 The `mise activate` line is written with an explicit path
 (`/root/.local/bin/mise`) because it runs before mise is on `PATH`.
+
+## MCP servers
+
+Two tools in `[tools]` ship a built-in MCP (Model Context Protocol) server over
+stdio, so AI coding agents can call them as tools:
+
+| Server | Command | What it offers |
+| ------ | ------- | -------------- |
+| `atuin` | `atuin mcp` | `atuin_history` (search shell history with exit codes, cwd, duration), `atuin_output`, `atuin_output_search` |
+| `carapace` | `carapace --mcp` | `complete` (context-aware shell completions), `list_macros`, `codegen` |
+
+Both are declared in `opencode/opencode.json` and deployed to
+`~/.config/opencode/opencode.json` (OpenCode's global config), so every project
+— not just this repo — gets them. Verify the connection state with:
+
+```sh
+opencode mcp list     # ✓ atuin connected · ✓ carapace connected
+```
+
+Notes:
+
+- The commands are bare names, so they resolve through `PATH`: OpenCode must be
+  launched from a shell where `mise activate` has run (any interactive shell
+  started from this repo's `bashrc`).
+- `atuin_history` works against the local SQLite database with no extra setup;
+  `atuin_output` / `atuin_output_search` additionally need Atuin's output
+  capture (daemon + pty-proxy) running.
+
+### The rest of `[tools]`
+
+None of the other installed tools expose an MCP server (checked: bat, duf,
+dust, eza, fd, fzf, gh, hunk, jj, jjui, jq, leaf, neovim, node, pi, procs,
+ripgrep, starship, yazi, yq, zellij, zoxide). Two related cases worth knowing:
+
+- **mise itself** has one: `mise mcp` exposes project tools, tasks, env, and
+  config as MCP resources/tools over stdio. It is not wired up here — one entry
+  in `opencode/opencode.json` adds it if wanted.
+- **`pi`** (`pi mcp …`) and **`opencode`** (`opencode mcp add/list`) have `mcp`
+  subcommands, but those *manage MCP clients* — they do not serve MCP.
 
 ## Themed interfaces
 

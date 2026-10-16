@@ -28,5 +28,7 @@ zoxide = "latest"
 [dotfiles]
 "~/.bashrc" = { source = "bashrc" }
 "~/.config/atuin/config.toml" = { source = "atuin/config.toml" }
+"~/.config/opencode/cli.json" = { source = "opencode/cli.json" }
+"~/.config/opencode/opencode.json" = { source = "opencode/opencode.json" }
 "~/.config/yazi" = { source = "yazi", mode = "symlink-each" }
 "~/.config/zellij/config.kdl" = { source = "zellij/config.kdl" }

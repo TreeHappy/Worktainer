@@ -36,6 +36,8 @@ Dockerfile              dev-container image
 mise.toml               [tools] + [dotfiles] entries
 bashrc                  -> ~/.bashrc
 atuin/config.toml       -> ~/.config/atuin/config.toml
+opencode/opencode.json  -> ~/.config/opencode/opencode.json (MCP servers)
+opencode/cli.json       -> ~/.config/opencode/cli.json (TUI settings)
 yazi/                   -> ~/.config/yazi (vendored Catppuccin Frappé flavor)
 zellij/config.kdl       -> ~/.config/zellij/config.kdl
 docs/                   documentation

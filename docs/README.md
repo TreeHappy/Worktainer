@@ -18,6 +18,8 @@ whole environment with `mise install && mise dot apply`.
 mise.toml               tools + [dotfiles] entries
 bashrc                  source for ~/.bashrc
 atuin/config.toml       source for ~/.config/atuin/config.toml
+opencode/opencode.json  source for ~/.config/opencode/opencode.json (MCP servers)
+opencode/cli.json       source for ~/.config/opencode/cli.json (TUI settings)
 yazi/                   Yazi file manager config (theme = Catppuccin Frappé)
 yazi/flavors/           vendored Catppuccin Frappé flavor
 zellij/config.kdl       source for ~/.config/zellij/config.kdl
@@ -38,6 +40,8 @@ expects.
 | --------------------------------- | ------------------- | ------------------- |
 | `~/.bashrc`                       | `bashrc`            | `symlink` (default) |
 | `~/.config/atuin/config.toml`     | `atuin/config.toml` | `symlink` (default) |
+| `~/.config/opencode/opencode.json` | `opencode/opencode.json` | `symlink` (default) |
+| `~/.config/opencode/cli.json` | `opencode/cli.json` | `symlink` (default) |
 | `~/.config/yazi`                  | `yazi`              | `symlink-each`      |
 | `~/.config/zellij/config.kdl`     | `zellij/config.kdl` | `symlink` (default) |
 

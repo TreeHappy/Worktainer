@@ -66,5 +66,7 @@ mise bootstrap --adopt <user>/<repo>
 | ----------------------------- | ------------------- |
 | `~/.bashrc`                   | `bashrc`            |
 | `~/.config/atuin/config.toml` | `atuin/config.toml` |
+| `~/.config/opencode/opencode.json` | `opencode/opencode.json` |
+| `~/.config/opencode/cli.json` | `opencode/cli.json` |
 | `~/.config/yazi` (`symlink-each`) | `yazi`          |
 | `~/.config/zellij/config.kdl` | `zellij/config.kdl` |

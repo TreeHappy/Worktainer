@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "atuin": {
+        "type": "local",
+        "command": ["atuin", "mcp"]
+      },
+      "carapace": {
+        "type": "local",
+        "command": ["carapace", "--mcp"]
+      }
+    }
+  }
+}
