@@ -1,0 +1,14 @@
+[tools]
+carapace = "latest"
+hunk = "latest"
+jj = "latest"
+jjui = "latest"
+neovim = "latest"
+node = "latest"
+opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
+starship = "latest"
+zellij = "latest"
+
+[dotfiles]
+"~/.bashrc" = { source = "bashrc" }
+"~/.config/zellij/config.kdl" = { source = "zellij/config.kdl" }
