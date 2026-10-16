@@ -26,18 +26,28 @@ docker build -t worktainer .
 docker run -it worktainer
 ```
 
-The image installs mise, runs `mise install && mise dot apply`, and drops you
-into bash with zellij auto-started.
+The image builds everything as an unprivileged `dev` user (uid 1000, no `sudo`)
+that owns the mise toolchain and the dotfiles checkout: it installs mise, runs
+`mise install && mise dot apply` (plus `bat cache --build`), and drops you into
+bash with zellij auto-started.
 
 ## Layout
 
 ```
-Dockerfile              dev-container image
+Dockerfile              dev-container image (non-root `dev` user)
 mise.toml               [tools] + [dotfiles] entries
-bashrc                  -> ~/.bashrc
+bashrc                  -> ~/.bashrc (aliases, fzf colours, mise/starship/… init)
 atuin/config.toml       -> ~/.config/atuin/config.toml
+bat/                    -> ~/.config/bat (config + vendored Catppuccin Frappé theme)
+eza/theme.yml           -> ~/.config/eza/theme.yml (Catppuccin Frappé)
+hunk/config.toml        -> ~/.config/hunk/config.toml (Catppuccin Frappé)
+jjui/                   -> ~/.config/jjui (config + Catppuccin Frappé theme)
+leaf/                   -> ~/.config/leaf (config + Catppuccin Frappé theme)
 opencode/opencode.json  -> ~/.config/opencode/opencode.json (MCP servers)
 opencode/cli.json       -> ~/.config/opencode/cli.json (TUI settings)
+pi/                     -> ~/.pi/agent (settings + vendored Catppuccin Frappé theme)
+procs/config.toml       -> ~/.config/procs/config.toml (Catppuccin Frappé)
+starship.toml           -> ~/.config/starship.toml (Catppuccin Frappé palette)
 yazi/                   -> ~/.config/yazi (vendored Catppuccin Frappé flavor)
 zellij/config.kdl       -> ~/.config/zellij/config.kdl
 docs/                   documentation

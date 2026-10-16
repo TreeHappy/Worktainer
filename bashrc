@@ -74,6 +74,13 @@ if [ -x /usr/bin/dircolors ]; then
     alias egrep='egrep --color=auto'
 fi
 
+# Let eza use its own Catppuccin Frappé theme (~/.config/eza/theme.yml) instead
+# of the dircolors LS_COLORS set above.
+unset LS_COLORS
+
+# fzf: Catppuccin Frappé colours
+export FZF_DEFAULT_OPTS="--color=bg+:#414559,bg:#303446,spinner:#f2d5cf,hl:#e78284,fg:#c6d0f5,header:#e78284,info:#ca9ee6,pointer:#f2d5cf,marker:#babbf1,fg+:#c6d0f5,prompt:#ca9ee6,hl+:#e78284,selected-bg:#51576d,border:#737994,label:#c6d0f5"
+
 # modern defaults: eza for ls, bat for cat
 alias ls='eza'
 alias ll='eza -l --git'
@@ -100,8 +107,16 @@ fi
 export EDITOR=nvim
 export VISUAL=nvim
 
-eval "$(/root/.local/bin/mise activate bash)" # added by https://mise.run/bash
-eval "$(/root/.local/bin/mise completion bash)"
+# mise: use an explicit path because this runs before mise is on PATH.
+# $HOME/.local/bin is the per-user install (as in the Docker image); fall back
+# to PATH for a system-wide install.
+if [ -x "$HOME/.local/bin/mise" ]; then
+    eval "$("$HOME"/.local/bin/mise activate bash)"
+    eval "$("$HOME"/.local/bin/mise completion bash)"
+elif command -v mise >/dev/null 2>&1; then
+    eval "$(mise activate bash)"
+    eval "$(mise completion bash)"
+fi
 eval "$(starship init bash)"
 eval "$(carapace _carapace bash)"
 eval "$(atuin init bash)"

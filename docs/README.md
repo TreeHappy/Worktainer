@@ -16,10 +16,18 @@ whole environment with `mise install && mise dot apply`.
 
 ```
 mise.toml               tools + [dotfiles] entries
-bashrc                  source for ~/.bashrc
+bashrc                  source for ~/.bashrc (aliases, fzf colours, mise/starship/… init)
 atuin/config.toml       source for ~/.config/atuin/config.toml
+bat/                    bat config + vendored Catppuccin Frappé theme
+eza/theme.yml           source for ~/.config/eza/theme.yml (Catppuccin Frappé)
+hunk/config.toml        source for ~/.config/hunk/config.toml (Catppuccin Frappé)
+jjui/                   jjui config + Catppuccin Frappé theme
+leaf/                   leaf config + Catppuccin Frappé theme
 opencode/opencode.json  source for ~/.config/opencode/opencode.json (MCP servers)
 opencode/cli.json       source for ~/.config/opencode/cli.json (TUI settings)
+pi/                     pi settings + vendored Catppuccin Frappé theme
+procs/config.toml       source for ~/.config/procs/config.toml (Catppuccin Frappé)
+starship.toml           source for ~/.config/starship.toml (Catppuccin Frappé palette)
 yazi/                   Yazi file manager config (theme = Catppuccin Frappé)
 yazi/flavors/           vendored Catppuccin Frappé flavor
 zellij/config.kdl       source for ~/.config/zellij/config.kdl
@@ -40,21 +48,30 @@ expects.
 | --------------------------------- | ------------------- | ------------------- |
 | `~/.bashrc`                       | `bashrc`            | `symlink` (default) |
 | `~/.config/atuin/config.toml`     | `atuin/config.toml` | `symlink` (default) |
+| `~/.config/bat`                   | `bat`               | `symlink-each`      |
+| `~/.config/eza/theme.yml`         | `eza/theme.yml`     | `symlink` (default) |
+| `~/.config/hunk/config.toml`      | `hunk/config.toml`  | `symlink` (default) |
+| `~/.config/jjui`                  | `jjui`              | `symlink-each`      |
+| `~/.config/leaf`                  | `leaf`              | `symlink-each`      |
+| `~/.config/opencode/cli.json`     | `opencode/cli.json` | `symlink` (default) |
 | `~/.config/opencode/opencode.json` | `opencode/opencode.json` | `symlink` (default) |
-| `~/.config/opencode/cli.json` | `opencode/cli.json` | `symlink` (default) |
+| `~/.config/procs/config.toml`     | `procs/config.toml` | `symlink` (default) |
+| `~/.config/starship.toml`         | `starship.toml`     | `symlink` (default) |
 | `~/.config/yazi`                  | `yazi`              | `symlink-each`      |
 | `~/.config/zellij/config.kdl`     | `zellij/config.kdl` | `symlink` (default) |
+| `~/.pi/agent`                     | `pi`                | `symlink-each`      |
 
-Both Zellij and Yazi use Catppuccin Frappé: Zellij's built-in
-`catppuccin-frappe` theme (`zellij/config.kdl`), and the vendored
-`catppuccin-frappe` flavor for Yazi (`yazi/theme.toml` +
-`yazi/flavors/catppuccin-frappe.yazi/`).
+Every tool that supports theming is set to Catppuccin Frappé — `bat`, `eza`,
+`fzf`, `hunk`, `jjui`, `leaf`, `opencode`, `pi`, `procs`, `starship`, `yazi`, and
+`zellij`. See [Tools § Themed interfaces](./tools.md#themed-interfaces) for the
+per-tool mechanism and the tools that cannot be faithfully themed.
 
-The Yazi entry uses a **directory source with `mode = "symlink-each"`**: one
-entry covers the whole `yazi/` tree, and `~/.config/yazi` stays a real directory
-whose files are individual symlinks — so tools that write there (`ya pkg`, ad-hoc
-flavors) do not add files to this repo. Use `exclude = ["*.md", …]` on such an
-entry to skip files while walking the source.
+The `bat`, `jjui`, `leaf`, `pi`, and `yazi` entries use a **directory source with
+`mode = "symlink-each"`**: one entry covers the whole tree, and the target (e.g.
+`~/.config/yazi`, `~/.pi/agent`) stays a real directory whose files are
+individual symlinks — so tools that write there (`ya pkg`, pi's `auth.json`,
+ad-hoc flavors/themes) do not add files to this repo. Use
+`exclude = ["*.md", …]` on such an entry to skip files while walking the source.
 
 ## Quick start
 

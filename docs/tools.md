@@ -21,26 +21,26 @@ The list mirrors `[tools]` in `mise.toml`, alphabetically.
 | Tool | What it is | Wired up in this repo |
 | ---- | ---------- | --------------------- |
 | `atuin` | Shell history database with fuzzy search, stats, and optional sync | `atuin init bash` (Ctrl-R); config in `atuin/config.toml` |
-| `bat` | `cat` with syntax highlighting and git markers | Aliased as `cat` (`--paging=never`) |
+| `bat` | `cat` with syntax highlighting and git markers | Aliased as `cat` (`--paging=never`); Catppuccin Frappé theme in `bat/` |
 | `carapace` | Completion engine that generates tab-completions for many CLIs | `carapace _carapace bash` |
 | `duf` | Disk usage/free viewer (modern `df`) | — |
 | `dust` | Disk usage visualizer, shows the biggest directories first (modern `du`) | — |
-| `eza` | `ls` replacement with colors, icons, and git status | Backs the `ls`, `ll`, `la`, `lt` aliases |
+| `eza` | `ls` replacement with colors, icons, and git status | Backs the `ls`, `ll`, `la`, `lt` aliases; Catppuccin Frappé theme in `eza/theme.yml` |
 | `fd` | Fast, user-friendly `find` | — |
-| `fzf` | Fuzzy finder for pipes, history, and file lists | Left standalone — no shell hook, so it does not fight atuin over Ctrl-R |
+| `fzf` | Fuzzy finder for pipes, history, and file lists | Left standalone — no shell hook, so it does not fight atuin over Ctrl-R; Catppuccin Frappé colours via `FZF_DEFAULT_OPTS` |
 | `gh` | GitHub CLI (PRs, issues, releases, `gh api`) | — |
-| `leaf` | Terminal Markdown viewer/TUI reader; also `--diff` and `--picker` | — |
-| `hunk` | Terminal diff/log pager for reviewing changesets | — |
+| `leaf` | Terminal Markdown viewer/TUI reader; also `--diff` and `--picker` | Catppuccin Frappé theme (hand-written) in `leaf/` |
+| `hunk` | Terminal diff/log pager for reviewing changesets | Built-in `catppuccin-frappe` theme in `hunk/config.toml` |
 | `jj` | [Jujutsu](https://jj-vcs.dev/) VCS; this repo is a jj + git colocated repo | Repo workflow (`jj status`, `jj commit`) |
-| `jjui` | Interactive TUI for Jujutsu | — |
+| `jjui` | Interactive TUI for Jujutsu | Catppuccin Frappé theme in `jjui/` |
 | `jq` | JSON processor | — |
 | `neovim` | Modal editor | `$EDITOR`/`$VISUAL`; also yazi's `edit` opener |
 | `node` | JavaScript runtime | Backs the npm-based tools below |
 | `opencode` | Terminal AI coding agent (`npm:@opencode/cli`, built on install) | Global config in `opencode/opencode.json` (MCP servers below), TUI settings in `opencode/cli.json` (theme `catppuccin-frappe`) |
-| `pi` | AI coding assistant with read/bash/edit/write tools | — |
-| `procs` | Modern `ps` replacement (process viewer) | — |
+| `pi` | AI coding assistant with read/bash/edit/write tools | Catppuccin Frappé theme (vendored) in `pi/` |
+| `procs` | Modern `ps` replacement (process viewer) | Catppuccin Frappé 256-colour `[style]` in `procs/config.toml` |
 | `ripgrep` | Fast recursive search (`rg`) | — |
-| `starship` | Cross-shell prompt | `starship init bash` |
+| `starship` | Cross-shell prompt | `starship init bash`; Catppuccin Frappé palette in `starship.toml` |
 | `yazi` | Terminal file manager | Config in `yazi/`; Catppuccin Frappé flavor |
 | `yq` | YAML/JSON/XML processor | — |
 | `zellij` | Terminal multiplexer with layouts and sessions | Auto-starts (last line of `bashrc`); config in `zellij/config.kdl` |
@@ -70,6 +70,8 @@ opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
 alias ls='eza'; alias ll='eza -l --git'; alias la='eza -la'; alias lt='eza --tree'
 alias cat='bat --paging=never'
 
+unset LS_COLORS                       # let eza use its own Catppuccin Frappé theme
+export FZF_DEFAULT_OPTS="--color=…"   # Catppuccin Frappé colours for fzf
 export EDITOR=nvim
 export VISUAL=nvim
 
@@ -79,10 +81,14 @@ eval "$(starship init bash)"      # prompt
 eval "$(carapace _carapace bash)" # completions for other CLIs
 eval "$(atuin init bash)"         # Ctrl-R history search
 eval "$(zoxide init bash)"        # z / zi
+
+zellij                            # auto-start the multiplexer
 ```
 
-The `mise activate` line is written with an explicit path
-(`/root/.local/bin/mise`) because it runs before mise is on `PATH`.
+The `mise activate`/`completion` lines use an explicit path
+(`$HOME/.local/bin/mise`, falling back to `mise` on `PATH`) because they run
+before mise is on `PATH` — a per-user install lives in `~/.local/bin`, the same
+place the Docker image puts it.
 
 ## MCP servers
 
@@ -125,12 +131,57 @@ ripgrep, starship, yazi, yq, zellij, zoxide). Two related cases worth knowing:
 
 ## Themed interfaces
 
-Three TUIs are set to Catppuccin Frappé:
+Every tool that supports theming is set to **Catppuccin Frappé**. Colours come
+from the official palette (<https://github.com/catppuccin/catppuccin>), and roles
+follow the palette's [style guide](https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md)
+(backgrounds, text, syntax).
 
-- **Zellij** — built-in `catppuccin-frappe` theme, set in `zellij/config.kdl`.
-- **Yazi** — the vendored `catppuccin-frappe` flavor (see below).
-- **neovim/others** — not themed here; neovim's own config is out of scope for
-  this repo.
+| Tool | Mechanism | Source |
+| ---- | --------- | ------ |
+| `bat` | vendored `Catppuccin Frappe.tmTheme` + `--theme="Catppuccin Frappe"` | `bat/config`, `bat/themes/` |
+| `eza` | native `theme.yml` (its own hex palette) | `eza/theme.yml` |
+| `fzf` | `--color=…` colourspec via `FZF_DEFAULT_OPTS` | `bashrc` |
+| `hunk` | built-in `catppuccin-frappe` theme | `hunk/config.toml` |
+| `jjui` | theme file (from the `tinted-jjui` base16 port) | `jjui/config.toml`, `jjui/themes/` |
+| `leaf` | hand-written theme (leaf's own `theme.toml` format) | `leaf/config.toml`, `leaf/themes/` |
+| `opencode` | built-in `catppuccin-frappe` name | `opencode/cli.json` |
+| `pi` | vendored `catppuccin-frappe` theme (from the `catppuccin-pi-theme` npm package) | `pi/settings.json`, `pi/themes/` |
+| `procs` | `[style]` mapping — 256-colour approximation (procs has no hex support) | `procs/config.toml` |
+| `starship` | palette + per-module colour overrides | `starship.toml` |
+| `yazi` | vendored `catppuccin-frappe` flavor | `yazi/theme.toml`, `yazi/flavors/` |
+| `zellij` | built-in `catppuccin-frappe` theme | `zellij/config.kdl` |
+
+Two notes:
+
+- **bat keeps a compiled theme cache.** After any change to `bat/themes/` (and on
+  a fresh machine after `mise dot apply`) run it once, or bat falls back to its
+  default theme:
+
+  ```sh
+  bat cache --build           # locally: mise exec -- bat cache --build
+  ```
+
+  The Docker image runs this at build time.
+- **eza ignores its theme while `LS_COLORS` is set**, which the stock Ubuntu
+  `~/.bashrc` sets from `dircolors` — hence the `unset LS_COLORS` line (that
+  block is inherited from Ubuntu's default bashrc).
+
+### Not themed
+
+Checked and left alone, usually because a faithful Frappé palette is impossible:
+
+| Tool | Why |
+| ---- | --- |
+| `atuin` | Custom themes exist, but only accept named ANSI colours — no hex, so no faithful Frappé. |
+| `duf` | Only `dark`, `light`, and `ansi` themes. |
+| `dust` | Colours are fixed; no theme config. |
+| `carapace` | Has a style system, but it controls completion layout rather than a global colour theme. |
+| `fd`, `gh`, `jq`, `yq`, `ripgrep`, `zoxide`, `node` | No theming support. |
+| `neovim` | Its config is out of scope for this repo. |
+
+`leaf`'s `syntax` setting names a bundled [syntect](https://github.com/trishume/syntect)
+theme for fenced code blocks; it cannot load bat's `.tmTheme`, so it uses
+`base16-mocha.dark` as the closest dark scheme.
 
 ## Adding or removing a tool
 
