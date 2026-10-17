@@ -34,11 +34,13 @@ zoxide = "latest"
 "~/.config/eza/theme.yml" = { source = "eza/theme.yml" }
 "~/.config/hunk/config.toml" = { source = "hunk/config.toml" }
 "~/.config/jjui" = { source = "jjui", mode = "symlink-each" }
+"~/.config/lazygit/config.yml" = { source = "lazygit/config.yml" }
 "~/.config/leaf" = { source = "leaf", mode = "symlink-each" }
 "~/.config/opencode/cli.json" = { source = "opencode/cli.json" }
 "~/.config/opencode/opencode.json" = { source = "opencode/opencode.json" }
 "~/.config/procs/config.toml" = { source = "procs/config.toml" }
 "~/.config/starship.toml" = { source = "starship.toml" }
+"~/.config/workmux/config.yaml" = { source = "workmux/config.yaml" }
 "~/.config/yazi" = { source = "yazi", mode = "symlink-each" }
 "~/.config/zellij/config.kdl" = { source = "zellij/config.kdl" }
 "~/.pi/agent" = { source = "pi", mode = "symlink-each" }

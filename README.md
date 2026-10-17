@@ -8,8 +8,8 @@ Everything, both the CLI tools and the config files, is declared in one
 `mise.toml`:
 
 - `[tools]` — installs the CLI tools (carapace, starship, atuin, zellij,
-  neovim, node, jj, yazi, …) into `~/.local/share/mise`, as prebuilt binaries,
-  no `sudo`.
+  neovim, node, jj, lazygit, workmux, yazi, …) into `~/.local/share/mise`, as
+  prebuilt binaries, no `sudo`.
 - `[dotfiles]` — deploys the tracked configs into `$HOME` as symlinks.
 
 So a new machine reproduces the whole environment with:
@@ -42,12 +42,14 @@ bat/                    -> ~/.config/bat (config + vendored Catppuccin Frappé t
 eza/theme.yml           -> ~/.config/eza/theme.yml (Catppuccin Frappé)
 hunk/config.toml        -> ~/.config/hunk/config.toml (Catppuccin Frappé)
 jjui/                   -> ~/.config/jjui (config + Catppuccin Frappé theme)
+lazygit/config.yml      -> ~/.config/lazygit/config.yml (Catppuccin Frappé)
 leaf/                   -> ~/.config/leaf (config + Catppuccin Frappé theme)
 opencode/opencode.json  -> ~/.config/opencode/opencode.json (MCP servers)
 opencode/cli.json       -> ~/.config/opencode/cli.json (TUI settings)
 pi/                     -> ~/.pi/agent (settings + vendored Catppuccin Frappé theme)
 procs/config.toml       -> ~/.config/procs/config.toml (Catppuccin Frappé)
 starship.toml           -> ~/.config/starship.toml (Catppuccin Frappé palette)
+workmux/config.yaml     -> ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
 yazi/                   -> ~/.config/yazi (vendored Catppuccin Frappé flavor)
 zellij/config.kdl       -> ~/.config/zellij/config.kdl
 docs/                   documentation

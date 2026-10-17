@@ -95,6 +95,11 @@ alias la='eza -la'
 alias lt='eza --tree'
 alias cat='bat --paging=never'
 
+# git tooling: lazygit TUI and workmux worktrees. workmux picks its multiplexer
+# from the environment, and the zellij started below sets $ZELLIJ.
+alias lg='lazygit'
+alias wm='workmux'
+
 # Alias definitions.
 # You may want to put all your additions into a separate file like
 # ~/.bash_aliases, instead of adding them here directly.

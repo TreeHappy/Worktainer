@@ -34,7 +34,7 @@ The list mirrors `[tools]` in `mise.toml`, alphabetically.
 | `jj` | [Jujutsu](https://jj-vcs.dev/) VCS; this repo is a jj + git colocated repo | Repo workflow (`jj status`, `jj commit`); pushing to GitHub in [Jujutsu and GitHub](./jj.md) |
 | `jjui` | Interactive TUI for Jujutsu | Catppuccin Frappé theme in `jjui/` |
 | `jq` | JSON processor | — |
-| `lazygit` | Terminal UI for Git (stage, commit, branches, rebase, stash) | Run directly; no shell wiring — see [Git workflow tools](#git-workflow-tools) |
+| `lazygit` | Terminal UI for Git (stage, commit, branches, rebase, stash) | Aliased as `lg`; Catppuccin Frappé theme in `lazygit/config.yml` — see [Git workflow tools](#git-workflow-tools) |
 | `neovim` | Modal editor | `$EDITOR`/`$VISUAL`; also yazi's `edit` opener |
 | `node` | JavaScript runtime | Backs the npm-based tools below |
 | `opencode` | Terminal AI coding agent (`npm:@opencode/cli`, built on install) | Global config in `opencode/opencode.json` (MCP servers below), TUI settings in `opencode/cli.json` (theme `catppuccin-frappe`) |
@@ -42,7 +42,7 @@ The list mirrors `[tools]` in `mise.toml`, alphabetically.
 | `procs` | Modern `ps` replacement (process viewer) | Catppuccin Frappé 256-colour `[style]` in `procs/config.toml` |
 | `ripgrep` | Fast recursive search (`rg`) | — |
 | `starship` | Cross-shell prompt | `starship init bash`; Catppuccin Frappé palette in `starship.toml`; prompt shows **jj** state (git modules disabled) |
-| `workmux` | git worktrees paired with multiplexer windows (and optional AI-agent panes) for parallel work | Run directly; auto-detects Zellij; no config tracked — see [Git workflow tools](#git-workflow-tools) |
+| `workmux` | git worktrees paired with multiplexer windows (and optional AI-agent panes) for parallel work | Aliased as `wm`; auto-detects Zellij; Catppuccin Frappé dashboard in `workmux/config.yaml` — see [Git workflow tools](#git-workflow-tools) |
 | `yazi` | Terminal file manager | Config in `yazi/`; Catppuccin Frappé flavor |
 | `yq` | YAML/JSON/XML processor | — |
 | `zellij` | Terminal multiplexer with layouts and sessions | Auto-starts (last line of `bashrc`); config in `zellij/config.kdl` |
@@ -114,22 +114,23 @@ snapshot, which any `jj` command refreshes. Adapted from the
 
 Two installed tools drive **Git** directly rather than jj. Both are plain
 binaries — no shell init — and both rely on the `git` binary, which the Docker
-image installs (and the [jj workflow](./jj.md) needs anyway):
+image installs (and the [jj workflow](./jj.md) needs anyway). `bashrc` adds the
+conventional short aliases `lg` (lazygit) and `wm` (workmux).
 
 - **`lazygit`** — a terminal UI for Git: staging, commits, branches, rebase,
   stash, and so on. It is most at home in an ordinary Git repository; in this
   jj-colocated repo it operates on the same `.git` store, so mixing it with jj
-  can be surprising. It reads `~/.config/lazygit/config.yml`, which this repo
-  does not manage, so lazygit's defaults apply.
+  can be surprising. Its Catppuccin Frappé theme lives in `lazygit/config.yml`,
+  deployed to `~/.config/lazygit/config.yml`.
 - **`workmux`** — runs each [git worktree](https://git-scm.com/docs/git-worktree)
   in its own multiplexer window, optionally with AI-agent panes, so features can
   be developed in parallel without branch switching:
 
   ```sh
-  workmux add feature/auth   # create a worktree + window and switch to it
-  workmux list               # list worktrees with status
-  workmux merge              # merge, then remove worktree/window/branch
-  workmux dashboard          # TUI overview of active agents
+  wm add feature/auth        # create a worktree + window and switch to it
+  wm list                    # list worktrees with status
+  wm merge                   # merge, then remove worktree/window/branch
+  wm dashboard               # TUI overview of active agents
   ```
 
   workmux needs a multiplexer and detects one from the environment: since the
@@ -138,8 +139,9 @@ image installs (and the [jj workflow](./jj.md) needs anyway):
   backend **experimental** — it relies on newer Zellij CLI actions and is
   documented as needing a Zellij built from source — so expect rough edges.
   Worktrees need `git` (installed); `--pr` and fork checkouts also need `gh`.
-  Config lives in `~/.config/workmux/config.yaml` (global) and `.workmux.yaml`
-  (per project); neither is managed here.
+  The global config (`workmux/config.yaml` → `~/.config/workmux/config.yaml`)
+  turns off Nerd Font icons and applies a Frappé dashboard palette; per-project
+  overrides still go in a `.workmux.yaml` at the project root.
 
 ## MCP servers
 
@@ -195,11 +197,13 @@ follow the palette's [style guide](https://github.com/catppuccin/catppuccin/blob
 | `fzf` | `--color=…` colourspec via `FZF_DEFAULT_OPTS` | `bashrc` |
 | `hunk` | built-in `catppuccin-frappe` theme | `hunk/config.toml` |
 | `jjui` | hand-written theme following the style guide | `jjui/config.toml`, `jjui/themes/` |
+| `lazygit` | vendor-neutral `gui.theme` colours (Catppuccin's official Frappé/mauve preset) | `lazygit/config.yml` |
 | `leaf` | hand-written theme (leaf's own `theme.toml` format) | `leaf/config.toml`, `leaf/themes/` |
 | `opencode` | built-in `catppuccin-frappe` name | `opencode/cli.json` |
 | `pi` | vendored `catppuccin-frappe` theme (from the `catppuccin-pi-theme` npm package) | `pi/settings.json`, `pi/themes/` |
 | `procs` | `[style]` mapping — 256-colour approximation (procs has no hex support) | `procs/config.toml` |
 | `starship` | palette + per-module colour overrides; jj custom modules (git modules disabled) | `starship.toml` |
+| `workmux` | dashboard `theme.custom` palette override (no built-in Frappé scheme) | `workmux/config.yaml` |
 | `yazi` | vendored `catppuccin-frappe` flavor | `yazi/theme.toml`, `yazi/flavors/` |
 | `zellij` | built-in `catppuccin-frappe` theme | `zellij/config.kdl` |
 
@@ -224,8 +228,7 @@ Three notes:
 
 ### Not themed
 
-Checked and left alone — usually because a faithful Frappé palette is
-impossible, in a couple of cases because no theme is configured here:
+Checked and left alone, usually because a faithful Frappé palette is impossible:
 
 | Tool | Why |
 | ---- | --- |
@@ -234,8 +237,6 @@ impossible, in a couple of cases because no theme is configured here:
 | `dust` | Colours are fixed; no theme config. |
 | `carapace` | Has a style system, but it controls completion layout rather than a global colour theme. |
 | `fd`, `gh`, `jq`, `yq`, `ripgrep`, `zoxide`, `node` | No theming support. |
-| `lazygit` | Supports custom colours (and has community Catppuccin ports), but this repo manages no `~/.config/lazygit/config.yml`, so its defaults apply. |
-| `workmux` | The dashboard's 12 built-in schemes have no Frappé preset; `theme.custom` can override palette colours, but no workmux config is tracked. |
 | `neovim` | Its config is out of scope for this repo. |
 
 `leaf`'s `syntax` setting names a bundled [syntect](https://github.com/trishume/syntect)

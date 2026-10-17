@@ -22,12 +22,14 @@ bat/                    bat config + vendored Catppuccin Frappé theme
 eza/theme.yml           source for ~/.config/eza/theme.yml (Catppuccin Frappé)
 hunk/config.toml        source for ~/.config/hunk/config.toml (Catppuccin Frappé)
 jjui/                   jjui config + Catppuccin Frappé theme
+lazygit/config.yml      source for ~/.config/lazygit/config.yml (Catppuccin Frappé)
 leaf/                   leaf config + Catppuccin Frappé theme
 opencode/opencode.json  source for ~/.config/opencode/opencode.json (MCP servers)
 opencode/cli.json       source for ~/.config/opencode/cli.json (TUI settings)
 pi/                     pi settings + vendored Catppuccin Frappé theme
 procs/config.toml       source for ~/.config/procs/config.toml (Catppuccin Frappé)
 starship.toml           source for ~/.config/starship.toml (Catppuccin Frappé palette, jj prompt)
+workmux/config.yaml     source for ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
 yazi/                   Yazi file manager config (theme = Catppuccin Frappé)
 yazi/flavors/           vendored Catppuccin Frappé flavor
 zellij/config.kdl       source for ~/.config/zellij/config.kdl
@@ -54,20 +56,22 @@ expects.
 | `~/.config/eza/theme.yml`         | `eza/theme.yml`     | `symlink` (default) |
 | `~/.config/hunk/config.toml`      | `hunk/config.toml`  | `symlink` (default) |
 | `~/.config/jjui`                  | `jjui`              | `symlink-each`      |
+| `~/.config/lazygit/config.yml`    | `lazygit/config.yml` | `symlink` (default) |
 | `~/.config/leaf`                  | `leaf`              | `symlink-each`      |
 | `~/.config/opencode/cli.json`     | `opencode/cli.json` | `symlink` (default) |
 | `~/.config/opencode/opencode.json` | `opencode/opencode.json` | `symlink` (default) |
 | `~/.config/procs/config.toml`     | `procs/config.toml` | `symlink` (default) |
 | `~/.config/starship.toml`         | `starship.toml`     | `symlink` (default) |
+| `~/.config/workmux/config.yaml`   | `workmux/config.yaml` | `symlink` (default) |
 | `~/.config/yazi`                  | `yazi`              | `symlink-each`      |
 | `~/.config/zellij/config.kdl`     | `zellij/config.kdl` | `symlink` (default) |
 | `~/.pi/agent`                     | `pi`                | `symlink-each`      |
 
 The tools this repo themes are set to Catppuccin Frappé — `bat`, `eza`, `fzf`,
-`hunk`, `jjui`, `leaf`, `opencode`, `pi`, `procs`, `starship`, `yazi`, and
-`zellij`. See [Tools § Themed interfaces](./tools.md#themed-interfaces) for the
-per-tool mechanism and the tools left unthemed (including `lazygit` and
-`workmux`).
+`hunk`, `jjui`, `lazygit`, `leaf`, `opencode`, `pi`, `procs`, `starship`,
+`workmux`, `yazi`, and `zellij`. See
+[Tools § Themed interfaces](./tools.md#themed-interfaces) for the per-tool
+mechanism and the tools left unthemed.
 
 The `bat`, `jjui`, `leaf`, `pi`, and `yazi` entries use a **directory source with
 `mode = "symlink-each"`**: one entry covers the whole tree, and the target (e.g.
