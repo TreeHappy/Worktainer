@@ -44,3 +44,9 @@ zoxide = "latest"
 "~/.config/yazi" = { source = "yazi", mode = "symlink-each" }
 "~/.config/zellij/config.kdl" = { source = "zellij/config.kdl" }
 "~/.pi/agent" = { source = "pi", mode = "symlink-each" }
+
+[bootstrap.packages]
+"apt:podman" = "latest"
+"apt:podman-compose" = "latest"
+"apt:uidmap" = "latest"
+"apt:passt" = "latest"

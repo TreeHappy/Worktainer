@@ -1,0 +1,181 @@
+#!/bin/sh
+# Acceptance checks for the sandbox.
+#
+# Every check is reported as PASS, FAIL or SKIP (SKIP means the thing being
+# verified depends on something that is not running right now, e.g. an
+# interactive session). The exit status is non-zero if anything failed.
+#
+# Run it with `bin/sandbox check`.
+set -u
+
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+pass=0
+fail=0
+skip=0
+
+ok()   { pass=$((pass + 1)); printf 'PASS  %s\n' "$1"; }
+bad()  { fail=$((fail + 1)); printf 'FAIL  %s\n' "$1"; [ $# -gt 1 ] && printf '      -> %s\n' "$2"; }
+note() { skip=$((skip + 1)); printf 'SKIP  %s\n' "$1"; [ $# -gt 1 ] && printf '      -> %s\n' "$2"; }
+
+# check <description> <command...>: PASS when the command exits 0.
+check() {
+    desc=$1
+    shift
+    if "$@" >/dev/null 2>&1; then ok "$desc"; else bad "$desc"; fi
+}
+
+echo "== networks =="
+for net in sandbox-ctrl sandbox-data sandbox-wan; do
+    check "$net exists" podman network exists "$net"
+done
+
+echo
+echo "== containers =="
+for name in sandbox-ingress sandbox-egress sandbox-devbox \
+            sandbox-telemetry-o11ylite sandbox-telemetry-otel-desktop-viewer \
+            sandbox-telemetry-otelop; do
+    if podman ps --format '{{.Names}}' 2>/dev/null | grep -qx "$name"; then
+        ok "$name is running"
+    else
+        bad "$name is running"
+    fi
+done
+
+echo
+echo "== the devbox only leaves through the egress =="
+if podman exec sandbox-devbox ip route show default 2>/dev/null | grep -q 'via 10\.89\.1\.2'; then
+    ok "devbox default route is via the egress (10.89.1.2)"
+else
+    bad "devbox default route is via the egress (10.89.1.2)" \
+        "$(podman exec sandbox-devbox ip route show default 2>&1)"
+fi
+
+# The data network's --route also lands on the egress container itself; its
+# entrypoint must delete that one, otherwise traffic prefers a loop back into
+# itself. This is the first thing to check on a fresh host.
+if podman exec sandbox-egress ip route show default 2>/dev/null | grep -q 'via 10\.89\.1\.2'; then
+    bad "egress default route no longer points at itself" \
+        "see README.md -> Troubleshooting, self-referential route"
+else
+    ok "egress default route no longer points at itself"
+fi
+
+if podman exec sandbox-devbox cat /etc/resolv.conf 2>/dev/null | grep -q '10\.89\.1\.2'; then
+    ok "devbox DNS is the egress container"
+else
+    bad "devbox DNS is the egress container"
+fi
+
+echo
+echo "== DNS and internet, from inside the devbox =="
+if podman exec sandbox-devbox getent hosts example.com >/dev/null 2>&1; then
+    ok "devbox resolves example.com through the egress"
+else
+    bad "devbox resolves example.com through the egress"
+fi
+
+code=$(podman exec sandbox-devbox curl -sS -o /dev/null -w '%{http_code}' \
+        --max-time 15 https://example.com 2>/dev/null || true)
+if [ "$code" = "200" ]; then
+    ok "devbox reaches the internet (https://example.com -> 200)"
+else
+    bad "devbox reaches the internet" "got HTTP '$code'"
+fi
+
+echo
+echo "== controllers =="
+if podman exec sandbox-egress nft list ruleset 2>/dev/null | grep -q masquerade; then
+    ok "egress masquerades on the WAN"
+else
+    bad "egress masquerades on the WAN"
+fi
+
+for counter in up down dns; do
+    if podman exec sandbox-egress nft list counters 2>/dev/null \
+        | grep -q "counter $counter"; then
+        ok "egress counter '$counter' present"
+    else
+        bad "egress counter '$counter' present"
+    fi
+done
+
+if podman exec sandbox-ingress nft list counters 2>/dev/null \
+    | grep -q 'counter forwarded'; then
+    ok "ingress counter 'forwarded' present"
+else
+    bad "ingress counter 'forwarded' present"
+fi
+
+if podman exec sandbox-ingress nft list ruleset 2>/dev/null | grep -q 'dnat'; then
+    ok "ingress has DNAT rules"
+else
+    bad "ingress has DNAT rules"
+fi
+
+if podman exec sandbox-ingress tc qdisc show 2>/dev/null | grep -q tbf; then
+    ok "ingress shapes the devbox-facing link (tbf)"
+else
+    bad "ingress shapes the devbox-facing link (tbf)"
+fi
+
+if podman exec sandbox-egress tc qdisc show 2>/dev/null | grep -q tbf; then
+    ok "egress shapes both links (tbf)"
+else
+    bad "egress shapes both links (tbf)"
+fi
+
+echo
+echo "== reaching the sandbox from the host =="
+for port in 9419 9420 9421; do
+    desc="host port $port reaches a telemetry UI through the ingress"
+    if command -v curl >/dev/null 2>&1; then
+        code=$(curl -sS -o /dev/null -w '%{http_code}' \
+               --max-time 10 "http://127.0.0.1:$port/" 2>/dev/null || true)
+        case "$code" in
+            000|"") bad "$desc" "connection failed (code '$code')" ;;
+            *) ok "$desc (HTTP $code)" ;;
+        esac
+    else
+        note "$desc" "curl is not installed on this host"
+    fi
+done
+
+# 8080 forwards to a demo listener in the devbox; there is none by default.
+if command -v curl >/dev/null 2>&1; then
+    code=$(curl -sS -o /dev/null -w '%{http_code}' \
+           --max-time 5 "http://127.0.0.1:8080/" 2>/dev/null || true)
+    case "$code" in
+        000|"") note "host port 8080 -> devbox" \
+                    "no listener: start one with bin/sandbox shell devbox" ;;
+        *)      ok "host port 8080 -> devbox (HTTP $code)" ;;
+    esac
+else
+    note "host port 8080 -> devbox" "curl is not installed on this host"
+fi
+
+echo
+echo "== telemetry =="
+if command -v curl >/dev/null 2>&1; then
+    for ep in "10.89.0.20 80" "10.89.0.21 8000" "10.89.0.22 4319"; do
+        set -- $ep
+        ip=$1
+        port=$2
+        # Ask from inside the ingress, which is on the control network; this
+        # is the path the controllers use to reach the backends.
+        if podman exec sandbox-ingress curl -sS -o /dev/null -w '%{http_code}' \
+            --max-time 10 "http://$ip:$port/" 2>/dev/null \
+            | grep -qE '^(200|301|302|303|307|308)$'; then
+            ok "control network reaches http://$ip:$port"
+        else
+            bad "control network reaches http://$ip:$port"
+        fi
+    done
+else
+    note "telemetry backends reachable on the control network" \
+         "curl is not installed on this host"
+fi
+
+echo
+printf 'passed=%d failed=%d skipped=%d\n' "$pass" "$fail" "$skip"
+[ "$fail" -eq 0 ]

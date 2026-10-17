@@ -3,14 +3,17 @@
 This repository is managed with [mise](https://mise.jdx.dev/) using the
 [`mise dotfiles`](https://mise.jdx.dev/dotfiles.html) feature (alias `mise dot`).
 
-`mise.toml` does two jobs:
+`mise.toml` does three jobs:
 
 - `[tools]` — installs the CLI tools this setup needs (carapace, starship,
   atuin, zellij, neovim, node, jj, …).
 - `[dotfiles]` — deploys the config files in this repo into `$HOME` as symlinks.
+- `[bootstrap.packages]` — a few apt packages mise cannot install as per-user
+  tools (podman and its rootless helpers, for the [sandbox](./sandbox.md)).
 
-Both are driven by the same `mise.toml`, so a new machine can reproduce the
-whole environment with `mise install && mise dot apply`.
+All three are driven by the same `mise.toml`, so a new machine can reproduce
+the whole environment with `mise install && mise dot apply` (plus
+`mise bootstrap` for the apt packages).
 
 ## Layout
 
@@ -33,6 +36,7 @@ workmux/config.yaml     source for ~/.config/workmux/config.yaml (Catppuccin Fra
 yazi/                   Yazi file manager config (theme = Catppuccin Frappé)
 yazi/flavors/           vendored Catppuccin Frappé flavor
 zellij/config.kdl       source for ~/.config/zellij/config.kdl
+sandbox/                a multi-container sandbox: devbox + ingress/egress + telemetry
 docs/                   this documentation
 ```
 
@@ -95,3 +99,4 @@ mise dot status      # confirm everything is applied
 - [Jujutsu and GitHub](./jj.md) — jj concepts, `gh` auth/repo setup, and pushing.
 - [Tools](./tools.md) — every CLI tool in `[tools]` and how it is wired up.
 - [New machine](./new-machine.md) — set up a fresh machine and troubleshooting.
+- [Sandbox](./sandbox.md) — the devbox behind controllers: the only way in, the only way out, and three telemetry backends.

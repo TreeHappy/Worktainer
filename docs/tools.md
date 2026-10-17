@@ -3,8 +3,10 @@
 Everything in `[tools]` is installed by [mise](https://mise.jdx.dev/) with
 `mise install` — prebuilt binaries into `~/.local/share/mise`, no distro
 packages and no `sudo`. The only things not managed here are `git` (mise cannot
-provide it) and, in the Docker image, `libatomic1` (needed by Node, see the
-`Dockerfile`).
+provide it), `libatomic1` (needed by Node, in the devbox image — see
+`sandbox/dev/Dockerfile`), and the few apt packages in
+`[bootstrap.packages]` (podman tooling for the [sandbox](../docs/sandbox.md),
+installed by `mise bootstrap`).
 
 ```sh
 mise install     # install/refresh everything in [tools]

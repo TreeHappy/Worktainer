@@ -1,6 +1,12 @@
 # Development container for these dotfiles.
-# Build: docker build -t dotfiles .
-# Run: docker run -it dotfiles
+#
+# Build context: this directory. `sandbox/dev/` holds a copy of the repo's
+# mise.toml and dotfile sources — the originals live at the repo root and are
+# the ones to edit. `bin/sandbox dev-sync` refreshes this copy, and `build`/
+# `up` run it for you, so the image never lags behind the root.
+#
+# Build: podman build -t worktainer sandbox/dev    # or: bin/sandbox build
+# Run:   podman run -it worktainer
 FROM ubuntu:devel
 
 # ca-certificates, curl: required to install mise

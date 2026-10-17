@@ -58,6 +58,29 @@ Adopting dotfiles straight from a remote repo:
 mise bootstrap --adopt <user>/<repo>
 ```
 
+### Bootstrap packages
+
+Not everything ships as a mise tool: podman, its compose front-end and the
+rootless networking helpers need capabilities a per-user binary cannot set up.
+They are declared in `[bootstrap.packages]` and installed with `apt` by the
+bootstrap step:
+
+```toml
+[bootstrap.packages]
+"apt:podman" = "latest"
+"apt:podman-compose" = "latest"
+"apt:uidmap" = "latest"
+"apt:passt" = "latest"
+```
+
+```sh
+mise bootstrap packages status     # what is installed
+mise bootstrap packages install    # force the apt install
+```
+
+These are for the [sandbox](./sandbox.md); without them the dotfiles still work
+fine.
+
 ## Notes and troubleshooting
 
 | Symptom | Cause / fix |

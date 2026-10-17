@@ -1,0 +1,52 @@
+[tools]
+atuin = "latest"
+bat = "latest"
+carapace = "latest"
+duf = "latest"
+dust = "latest"
+eza = "latest"
+fd = "latest"
+fzf = "latest"
+gh = "latest"
+"github:RivoLink/leaf" = "latest"
+hunk = "latest"
+jj = "latest"
+jjui = "latest"
+jq = "latest"
+lazygit = "latest"
+neovim = "latest"
+node = "latest"
+opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
+pi = "latest"
+"aqua:dalance/procs" = "latest"
+ripgrep = "latest"
+starship = "latest"
+workmux = "latest"
+yazi = "latest"
+yq = "latest"
+zellij = "latest"
+zoxide = "latest"
+
+[dotfiles]
+"~/.bashrc" = { source = "bashrc" }
+"~/.config/atuin/config.toml" = { source = "atuin/config.toml" }
+"~/.config/bat" = { source = "bat", mode = "symlink-each" }
+"~/.config/eza/theme.yml" = { source = "eza/theme.yml" }
+"~/.config/hunk/config.toml" = { source = "hunk/config.toml" }
+"~/.config/jjui" = { source = "jjui", mode = "symlink-each" }
+"~/.config/lazygit/config.yml" = { source = "lazygit/config.yml" }
+"~/.config/leaf" = { source = "leaf", mode = "symlink-each" }
+"~/.config/opencode/cli.json" = { source = "opencode/cli.json" }
+"~/.config/opencode/opencode.json" = { source = "opencode/opencode.json" }
+"~/.config/procs/config.toml" = { source = "procs/config.toml" }
+"~/.config/starship.toml" = { source = "starship.toml" }
+"~/.config/workmux/config.yaml" = { source = "workmux/config.yaml" }
+"~/.config/yazi" = { source = "yazi", mode = "symlink-each" }
+"~/.config/zellij/config.kdl" = { source = "zellij/config.kdl" }
+"~/.pi/agent" = { source = "pi", mode = "symlink-each" }
+
+[bootstrap.packages]
+"apt:podman" = "latest"
+"apt:podman-compose" = "latest"
+"apt:uidmap" = "latest"
+"apt:passt" = "latest"

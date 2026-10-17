@@ -4,25 +4,33 @@ A containerized, [mise](https://mise.jdx.dev/)-managed work environment: an
 Ubuntu dev-container image plus the dotfiles that turn it — or any fresh
 machine — into a consistent shell.
 
-Everything, both the CLI tools and the config files, is declared in one
-`mise.toml`:
+It doubles as a **sandbox for AI agents**: the same devbox, but with its
+network behind two controllers that decide what it can reach and three
+telemetry backends that watch the boundary. See
+**[Sandbox](./docs/sandbox.md)**.
+
+Everything — the CLI tools, the config files, and the few system packages mise
+cannot install per-user — is declared in one `mise.toml`:
 
 - `[tools]` — installs the CLI tools (carapace, starship, atuin, zellij,
   neovim, node, jj, lazygit, workmux, yazi, …) into `~/.local/share/mise`, as
   prebuilt binaries, no `sudo`.
 - `[dotfiles]` — deploys the tracked configs into `$HOME` as symlinks.
+- `[bootstrap.packages]` — a handful of apt packages (podman and its rootless
+  helpers, for the sandbox).
 
 So a new machine reproduces the whole environment with:
 
 ```sh
 mise install     # install the CLI tools
 mise dot apply   # deploy the dotfiles into $HOME
+mise bootstrap   # the apt packages in [bootstrap.packages]
 ```
 
 ## Container quick start
 
 ```sh
-docker build -t worktainer .
+docker build -t worktainer sandbox/dev
 docker run -it worktainer
 ```
 
@@ -31,11 +39,14 @@ that owns the mise toolchain and the dotfiles checkout: it installs mise, runs
 `mise install && mise dot apply` (plus `bat cache --build`), and drops you into
 bash with zellij auto-started.
 
+Its build context is `sandbox/dev/`, which holds the Dockerfile plus **copies**
+of the dotfile sources it needs (the root ones stay the source of truth).
+`bin/sandbox dev-sync` refreshes the copies.
+
 ## Layout
 
 ```
-Dockerfile              dev-container image (non-root `dev` user)
-mise.toml               [tools] + [dotfiles] entries
+mise.toml               [tools] + [dotfiles] + [bootstrap.packages]
 bashrc                  -> ~/.bashrc (aliases, fzf colours, mise/starship/… init)
 atuin/config.toml       -> ~/.config/atuin/config.toml
 bat/                    -> ~/.config/bat (config + vendored Catppuccin Frappé theme)
@@ -52,6 +63,8 @@ starship.toml           -> ~/.config/starship.toml (Catppuccin Frappé palette)
 workmux/config.yaml     -> ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
 yazi/                   -> ~/.config/yazi (vendored Catppuccin Frappé flavor)
 zellij/config.kdl       -> ~/.config/zellij/config.kdl
+sandbox/                the multi-container sandbox (devbox + controllers + telemetry)
+sandbox/dev/Dockerfile  the devbox image (was the root Dockerfile)
 docs/                   documentation
 ```
 
@@ -61,6 +74,7 @@ docs/                   documentation
 - [Jujutsu and GitHub](./docs/jj.md) — jj concepts, `gh` auth/repo setup, and pushing.
 - [Tools](./docs/tools.md) — every CLI tool in `[tools]` and how it is wired up.
 - [New machine](./docs/new-machine.md) — fresh-machine setup and troubleshooting.
+- [Sandbox](./docs/sandbox.md) — the devbox behind controllers; telemetry backends.
 - [Docs index](./docs/README.md) — overview, layout, and conventions.
 
 ## Version control

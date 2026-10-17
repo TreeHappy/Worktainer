@@ -1,0 +1,115 @@
+# Catppuccin Frappé theme for leaf.
+#
+# Hand-written from the official Catppuccin Frappé palette, following the
+# Catppuccin style guide for colour roles:
+#   https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md
+#
+# Frappé palette
+#   base #303446   mantle #292c3c   crust #232634
+#   surface0 #414559   surface1 #51576d   surface2 #626880
+#   overlay0 #737994   overlay1 #838ba7   overlay2 #949cbb
+#   text #c6d0f5   subtext1 #b5bfe2   subtext0 #a5adce
+#   rosewater #f2d5cf   flamingo #eebebe   pink #f4b8e4   mauve #ca9ee6
+#   red #e78284   maroon #ea999c   peach #ef9f76   yellow #e5c890
+#   green #a6d189   teal #81c8be   sky #99d1db   sapphire #85c1dc
+#   blue #8caaee   lavender #babbf1
+#
+# `syntax` names a syntect theme used for fenced code blocks (leaf bundles
+# syntect's own themes, not bat's .tmTheme files); base16-mocha.dark is the
+# closest dark Catppuccin-like scheme.
+base = "ocean"
+syntax = "base16-mocha.dark"
+
+[ui]
+toc_bg = "#232634"                  # crust
+toc_border = "#51576d"              # surface1
+content_bg = "#303446"              # base
+scrollbar_hover = "#babbf1"         # lavender
+status_bg = "#292c3c"               # mantle
+status_separator = "#838ba7"        # overlay1
+status_brand_fg = "#303446"         # base (text on accent)
+status_brand_bg = "#8caaee"         # blue
+status_filename_fg = "#c6d0f5"      # text
+status_filename_bg = "#414559"      # surface0
+status_watch_fg = "#a6d189"         # green
+status_watch_bg = "#414559"         # surface0
+status_reloaded_fg = "#303446"      # base (text on accent)
+status_reloaded_bg = "#a6d189"      # green
+status_search_fg = "#e5c890"        # yellow
+status_search_bg = "#414559"        # surface0
+status_success_fg = "#a6d189"       # green
+status_success_bg = "#414559"       # surface0
+status_warning_fg = "#e5c890"       # yellow
+status_warning_bg = "#414559"       # surface0
+status_error_fg = "#e78284"         # red
+status_error_bg = "#414559"         # surface0
+status_shortcut_fg = "#838ba7"      # overlay1
+status_percent_fg = "#e5c890"       # yellow
+status_dot_fg = "#838ba7"           # overlay1
+toc_hover_fg = "#c6d0f5"            # text
+toc_header_fg = "#838ba7"           # overlay1
+toc_active_bg = "#414559"           # surface0
+toc_inactive_bg = "#232634"         # crust
+toc_accent = "#8caaee"              # blue
+toc_index_inactive = "#737994"      # overlay0
+toc_primary_active = "#c6d0f5"      # text
+toc_primary_inactive = "#b5bfe2"    # subtext1
+toc_secondary_inactive = "#737994"  # overlay0
+toc_secondary_text_active = "#a5adce"    # subtext0
+toc_secondary_text_inactive = "#838ba7"  # overlay1
+
+[markdown]
+search_highlight_bg = "#626880"     # surface2
+search_match_bg = "#e5c890"         # yellow
+code_gutter = "#737994"             # overlay0
+blockquote_marker = "#838ba7"       # overlay1
+# list levels follow the style guide's rainbow order
+list_level_1 = "#e78284"            # red
+list_level_2 = "#ef9f76"            # peach
+list_level_3 = "#e5c890"            # yellow
+ordered_list = "#e5c890"            # yellow
+table_border = "#737994"            # overlay0
+table_separator = "#51576d"         # surface1
+table_header = "#e5c890"            # yellow
+table_cell = "#c6d0f5"              # text
+# headings follow the style guide's rainbow order
+heading_1 = "#e78284"               # red
+heading_2 = "#ef9f76"               # peach
+heading_3 = "#e5c890"               # yellow
+heading_4 = "#a6d189"               # green
+heading_other = "#85c1dc"           # sapphire
+heading_underline = "#51576d"       # surface1
+code_frame = "#737994"              # overlay0
+code_label = "#838ba7"              # overlay1
+inline_code_fg = "#ef9f76"          # peach
+inline_code_bg = "#414559"          # surface0
+rule = "#51576d"                    # surface1
+link_icon = "#8caaee"               # blue
+link_text = "#8caaee"               # blue
+link_hover = "#99d1db"              # sky
+blockquote_text = "#b5bfe2"         # subtext1
+text = "#c6d0f5"                    # text
+strong_text = "#c6d0f5"             # text (rendered bold)
+latex_inline_fg = "#ca9ee6"         # mauve
+latex_inline_bg = "#414559"         # surface0
+latex_block_fg = "#ca9ee6"          # mauve
+mermaid_keyword = "#ca9ee6"         # mauve
+mermaid_arrow = "#99d1db"           # sky
+mermaid_label = "#a6d189"           # green
+mermaid_block_fg = "#c6d0f5"        # text
+mark_fg = "#303446"                 # base (mark text)
+mark_bg = "#babbf1"                 # lavender
+task_checked = "#a6d189"            # green
+task_unchecked = "#838ba7"          # overlay1
+alert_note = "#81c8be"              # teal (information)
+alert_tip = "#a6d189"               # green
+alert_important = "#ca9ee6"         # mauve
+alert_warning = "#e5c890"           # yellow
+alert_caution = "#e78284"           # red
+footnote_ref = "#8caaee"            # blue
+footnote_text = "#b5bfe2"           # subtext1
+
+[diff]
+file_separator_fg = "#c6d0f5"       # text
+tree_tag_change = "#ef9f76"         # peach
+tree_tag_renamed = "#8caaee"        # blue
