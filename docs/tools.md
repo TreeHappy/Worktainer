@@ -34,6 +34,7 @@ The list mirrors `[tools]` in `mise.toml`, alphabetically.
 | `jj` | [Jujutsu](https://jj-vcs.dev/) VCS; this repo is a jj + git colocated repo | Repo workflow (`jj status`, `jj commit`); pushing to GitHub in [Jujutsu and GitHub](./jj.md) |
 | `jjui` | Interactive TUI for Jujutsu | Catppuccin Frappé theme in `jjui/` |
 | `jq` | JSON processor | — |
+| `lazygit` | Terminal UI for Git (stage, commit, branches, rebase, stash) | Run directly; no shell wiring — see [Git workflow tools](#git-workflow-tools) |
 | `neovim` | Modal editor | `$EDITOR`/`$VISUAL`; also yazi's `edit` opener |
 | `node` | JavaScript runtime | Backs the npm-based tools below |
 | `opencode` | Terminal AI coding agent (`npm:@opencode/cli`, built on install) | Global config in `opencode/opencode.json` (MCP servers below), TUI settings in `opencode/cli.json` (theme `catppuccin-frappe`) |
@@ -41,6 +42,7 @@ The list mirrors `[tools]` in `mise.toml`, alphabetically.
 | `procs` | Modern `ps` replacement (process viewer) | Catppuccin Frappé 256-colour `[style]` in `procs/config.toml` |
 | `ripgrep` | Fast recursive search (`rg`) | — |
 | `starship` | Cross-shell prompt | `starship init bash`; Catppuccin Frappé palette in `starship.toml`; prompt shows **jj** state (git modules disabled) |
+| `workmux` | git worktrees paired with multiplexer windows (and optional AI-agent panes) for parallel work | Run directly; auto-detects Zellij; no config tracked — see [Git workflow tools](#git-workflow-tools) |
 | `yazi` | Terminal file manager | Config in `yazi/`; Catppuccin Frappé flavor |
 | `yq` | YAML/JSON/XML processor | — |
 | `zellij` | Terminal multiplexer with layouts and sessions | Auto-starts (last line of `bashrc`); config in `zellij/config.kdl` |
@@ -108,6 +110,37 @@ snapshotting or locking the repo. The state shown is therefore the last
 snapshot, which any `jj` command refreshes. Adapted from the
 [jj Starship wiki](https://github.com/jj-vcs/jj/wiki/Starship).
 
+## Git workflow tools
+
+Two installed tools drive **Git** directly rather than jj. Both are plain
+binaries — no shell init — and both rely on the `git` binary, which the Docker
+image installs (and the [jj workflow](./jj.md) needs anyway):
+
+- **`lazygit`** — a terminal UI for Git: staging, commits, branches, rebase,
+  stash, and so on. It is most at home in an ordinary Git repository; in this
+  jj-colocated repo it operates on the same `.git` store, so mixing it with jj
+  can be surprising. It reads `~/.config/lazygit/config.yml`, which this repo
+  does not manage, so lazygit's defaults apply.
+- **`workmux`** — runs each [git worktree](https://git-scm.com/docs/git-worktree)
+  in its own multiplexer window, optionally with AI-agent panes, so features can
+  be developed in parallel without branch switching:
+
+  ```sh
+  workmux add feature/auth   # create a worktree + window and switch to it
+  workmux list               # list worktrees with status
+  workmux merge              # merge, then remove worktree/window/branch
+  workmux dashboard          # TUI overview of active agents
+  ```
+
+  workmux needs a multiplexer and detects one from the environment: since the
+  tracked `bashrc` auto-starts **Zellij**, `$ZELLIJ` is set and the Zellij
+  backend is chosen (`WORKMUX_BACKEND=zellij` forces it). Upstream marks that
+  backend **experimental** — it relies on newer Zellij CLI actions and is
+  documented as needing a Zellij built from source — so expect rough edges.
+  Worktrees need `git` (installed); `--pr` and fork checkouts also need `gh`.
+  Config lives in `~/.config/workmux/config.yaml` (global) and `.workmux.yaml`
+  (per project); neither is managed here.
+
 ## MCP servers
 
 Two tools in `[tools]` ship a built-in MCP (Model Context Protocol) server over
@@ -138,8 +171,9 @@ Notes:
 ### The rest of `[tools]`
 
 None of the other installed tools expose an MCP server (checked: bat, duf,
-dust, eza, fd, fzf, gh, hunk, jj, jjui, jq, leaf, neovim, node, pi, procs,
-ripgrep, starship, yazi, yq, zellij, zoxide). Two related cases worth knowing:
+dust, eza, fd, fzf, gh, hunk, jj, jjui, jq, lazygit, leaf, neovim, node, pi,
+procs, ripgrep, starship, workmux, yazi, yq, zellij, zoxide). Two related cases
+worth knowing:
 
 - **mise itself** has one: `mise mcp` exposes project tools, tasks, env, and
   config as MCP resources/tools over stdio. It is not wired up here — one entry
@@ -149,7 +183,7 @@ ripgrep, starship, yazi, yq, zellij, zoxide). Two related cases worth knowing:
 
 ## Themed interfaces
 
-Every tool that supports theming is set to **Catppuccin Frappé**. Colours come
+Every tool this repo themes is set to **Catppuccin Frappé**. Colours come
 from the official palette (<https://github.com/catppuccin/catppuccin>), and roles
 follow the palette's [style guide](https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md)
 (backgrounds, text, syntax).
@@ -190,7 +224,8 @@ Three notes:
 
 ### Not themed
 
-Checked and left alone, usually because a faithful Frappé palette is impossible:
+Checked and left alone — usually because a faithful Frappé palette is
+impossible, in a couple of cases because no theme is configured here:
 
 | Tool | Why |
 | ---- | --- |
@@ -199,6 +234,8 @@ Checked and left alone, usually because a faithful Frappé palette is impossible
 | `dust` | Colours are fixed; no theme config. |
 | `carapace` | Has a style system, but it controls completion layout rather than a global colour theme. |
 | `fd`, `gh`, `jq`, `yq`, `ripgrep`, `zoxide`, `node` | No theming support. |
+| `lazygit` | Supports custom colours (and has community Catppuccin ports), but this repo manages no `~/.config/lazygit/config.yml`, so its defaults apply. |
+| `workmux` | The dashboard's 12 built-in schemes have no Frappé preset; `theme.custom` can override palette colours, but no workmux config is tracked. |
 | `neovim` | Its config is out of scope for this repo. |
 
 `leaf`'s `syntax` setting names a bundled [syntect](https://github.com/trishume/syntect)

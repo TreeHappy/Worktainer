@@ -63,10 +63,11 @@ expects.
 | `~/.config/zellij/config.kdl`     | `zellij/config.kdl` | `symlink` (default) |
 | `~/.pi/agent`                     | `pi`                | `symlink-each`      |
 
-Every tool that supports theming is set to Catppuccin Frappé — `bat`, `eza`,
-`fzf`, `hunk`, `jjui`, `leaf`, `opencode`, `pi`, `procs`, `starship`, `yazi`, and
+The tools this repo themes are set to Catppuccin Frappé — `bat`, `eza`, `fzf`,
+`hunk`, `jjui`, `leaf`, `opencode`, `pi`, `procs`, `starship`, `yazi`, and
 `zellij`. See [Tools § Themed interfaces](./tools.md#themed-interfaces) for the
-per-tool mechanism and the tools that cannot be faithfully themed.
+per-tool mechanism and the tools left unthemed (including `lazygit` and
+`workmux`).
 
 The `bat`, `jjui`, `leaf`, `pi`, and `yazi` entries use a **directory source with
 `mode = "symlink-each"`**: one entry covers the whole tree, and the target (e.g.
