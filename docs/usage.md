@@ -4,18 +4,18 @@ How to work with the dotfiles in this repo.
 
 ## How it works
 
-The repo stores the **sources**. Each entry in `mise.toml` maps a target in
-`$HOME` to a source in the repo:
+The repo stores the **sources** in `dotfiles/`, and `mise.toml` at the repo
+root maps each target in `$HOME` to a source:
 
 ```toml
 [dotfiles]
-"~/.bashrc" = { source = "bashrc" }
-"~/.config/zellij/config.kdl" = { source = "zellij/config.kdl" }
+"~/.bashrc" = { source = "dotfiles/bashrc" }
+"~/.config/zellij/config.kdl" = { source = "dotfiles/zellij/config.kdl" }
 ```
 
 `mise dot apply` makes the target a symlink to the source. Relative sources
-resolve from the directory of the config file that declares them (the repo
-root here), so entries always deploy to the same absolute paths.
+resolve from the directory of the config file that declares them (the repo root
+here), so entries always deploy to the same absolute paths.
 
 The default mode is `symlink` (from `mise settings dotfiles.default_mode`), so:
 
@@ -27,7 +27,7 @@ The default mode is `symlink` (from `mise settings dotfiles.default_mode`), so:
 ## Everyday commands
 
 ```sh
-cd /workspace
+cd /workspace              # mise.toml lives at the repo root
 
 mise dot status            # what is applied / differs / missing
 mise dot apply --dry-run   # preview changes without writing
@@ -41,24 +41,27 @@ Run them from anywhere with `mise -C /workspace dot <command>`.
 
 ```sh
 cd /workspace
-mise dot add --local --source <source-in-repo> <target-in-home>
+mise dot add --local --source dotfiles/<source> <target-in-home>
 ```
 
 For example, to start managing a Zellij layouts folder:
 
 ```sh
-mise dot add --local --source zellij/layouts ~/.config/zellij/layouts
+mise dot add --local --source dotfiles/zellij/layouts ~/.config/zellij/layouts
 ```
 
-`mise dot add` moves the target into the repo, writes the `[dotfiles]` entry to
-the repo's `mise.toml`, and applies it.
+`mise dot add` moves the target into `dotfiles/`, writes the `[dotfiles]` entry
+to `mise.toml`, and applies it.
+
+> Add the new entry to `sandbox/dev/mise.toml` too — the image uses that copy of
+> the config, so a source it does not list will not be deployed there.
 
 Flags worth knowing:
 
 | Flag                  | Purpose                                                           |
 | --------------------- | ----------------------------------------------------------------- |
 | `--local`             | Write the entry to this repo's `mise.toml` (not the global config) |
-| `--source <path>`     | Where the source is stored, relative to the repo root              |
+| `--source <path>`     | Where the source is stored, relative to the repo root (`dotfiles/…`) |
 | `--mode <mode>`       | `symlink` (default), `symlink-each`, `copy`, or `template`         |
 | `--dry-run`           | Preview without writing                                            |
 
@@ -82,7 +85,7 @@ per file — the Yazi config in this repo does exactly that:
 
 ```toml
 [dotfiles]
-"~/.config/yazi" = { source = "yazi", mode = "symlink-each" }
+"~/.config/yazi" = { source = "dotfiles/yazi", mode = "symlink-each" }
 ```
 
 `mise dot apply` walks `yazi/` and links every file it finds. There is no glob
@@ -91,7 +94,7 @@ walk instead, via `exclude` (skipped) and `include` (tracked directories only):
 
 ```toml
 "~/.config/yazi" = {
-  source = "yazi",
+  source = "dotfiles/yazi",
   mode = "symlink-each",
   exclude = ["*.md", ".git"],
 }
@@ -137,7 +140,8 @@ and recovering from rejected pushes — see **[Jujutsu and GitHub](./jj.md)**.
 
 ## Remove a dotfile
 
-1. Delete its `[dotfiles]` entry from `mise.toml`.
+1. Delete its `[dotfiles]` entry from `mise.toml` and from
+   `sandbox/dev/mise.toml`.
 2. Remove the deployed link and, if you want, the source:
 
 ```sh

@@ -122,12 +122,15 @@ services:
     restart: unless-stopped
 
   # ------------------------------------------------------------------------
-  # The sandbox itself. Built from sandbox/dev, which holds a copy of the
-  # repo's own devbox Dockerfile and dotfile sources — `bin/sandbox dev-sync`
-  # (run automatically by build/up) refreshes it from the repo root.
+  # The sandbox itself. Built from sandbox/dev/Dockerfile against the repo
+  # root, whose dotfiles/ folder holds every config source and whose
+  # sandbox/dev/mise.toml is the container config — the image copies both
+  # directly, so there is no synced copy of the sources to lag behind.
   # ------------------------------------------------------------------------
   devbox:
-    build: ./dev
+    build:
+      context: ..
+      dockerfile: sandbox/dev/Dockerfile
     image: localhost/sandbox-devbox:latest
     container_name: sandbox-devbox
     hostname: devbox

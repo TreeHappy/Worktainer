@@ -15,7 +15,7 @@ curl https://mise.run | sh
 ```sh
 # Clone with jj (or `git clone`, which works on this colocated repo)
 jj git clone <repo-url> ~/src/dotfiles
-cd ~/src/dotfiles
+cd ~/src/dotfiles       # mise.toml lives at the repo root; sources under dotfiles/
 
 mise trust              # project configs are ignored until trusted
 mise install            # install the CLI tools from [tools]
@@ -23,6 +23,10 @@ mise dot apply --dry-run # preview the symlinks
 mise dot apply          # deploy the dotfiles
 mise dot status         # confirm: "N entries up to date"
 ```
+
+The config sources live in `dotfiles/`, but `mise.toml` stays at the repo root
+so mise can discover it from anywhere in the checkout — run every command from
+the repo root.
 
 Deploying `bat/` is not enough on its own: bat caches themes in `~/.cache/bat`,
 so build the cache once after the dotfiles are in place:
@@ -45,7 +49,7 @@ Activate mise in your shell (already done if you copied the tracked
 ## One-shot bootstrap
 
 `mise bootstrap` can chain the whole setup (repos, tools, dotfiles) in one
-command:
+command, run from the repo root:
 
 ```sh
 mise bootstrap              # run the steps declared in the config
@@ -98,21 +102,24 @@ fine.
 
 ## What gets deployed where
 
-| Target                        | Source              |
-| ----------------------------- | ------------------- |
-| `~/.bashrc`                   | `bashrc`            |
-| `~/.config/atuin/config.toml` | `atuin/config.toml` |
-| `~/.config/bat` (`symlink-each`) | `bat`            |
-| `~/.config/eza/theme.yml`     | `eza/theme.yml`     |
-| `~/.config/hunk/config.toml`  | `hunk/config.toml`  |
-| `~/.config/jjui` (`symlink-each`) | `jjui`          |
-| `~/.config/lazygit/config.yml` | `lazygit/config.yml` |
-| `~/.config/leaf` (`symlink-each`) | `leaf`          |
-| `~/.config/opencode/cli.json` | `opencode/cli.json` |
-| `~/.config/opencode/opencode.json` | `opencode/opencode.json` |
-| `~/.config/procs/config.toml` | `procs/config.toml` |
-| `~/.config/starship.toml`     | `starship.toml`     |
-| `~/.config/workmux/config.yaml` | `workmux/config.yaml` |
-| `~/.config/yazi` (`symlink-each`) | `yazi`          |
-| `~/.config/zellij/config.kdl` | `zellij/config.kdl` |
-| `~/.pi/agent` (`symlink-each`) | `pi`               |
+Sources are relative to `mise.toml` at the repo root, so each source reads
+`dotfiles/<path>`.
+
+| Target                        | Source                        |
+| ----------------------------- | ----------------------------- |
+| `~/.bashrc`                   | `dotfiles/bashrc`             |
+| `~/.config/atuin/config.toml` | `dotfiles/atuin/config.toml`  |
+| `~/.config/bat` (`symlink-each`) | `dotfiles/bat`             |
+| `~/.config/eza/theme.yml`     | `dotfiles/eza/theme.yml`      |
+| `~/.config/hunk/config.toml`  | `dotfiles/hunk/config.toml`   |
+| `~/.config/jjui` (`symlink-each`) | `dotfiles/jjui`           |
+| `~/.config/lazygit/config.yml` | `dotfiles/lazygit/config.yml` |
+| `~/.config/leaf` (`symlink-each`) | `dotfiles/leaf`           |
+| `~/.config/opencode/cli.json` | `dotfiles/opencode/cli.json`  |
+| `~/.config/opencode/opencode.json` | `dotfiles/opencode/opencode.json` |
+| `~/.config/procs/config.toml` | `dotfiles/procs/config.toml`  |
+| `~/.config/starship.toml`     | `dotfiles/starship.toml`      |
+| `~/.config/workmux/config.yaml` | `dotfiles/workmux/config.yaml` |
+| `~/.config/yazi` (`symlink-each`) | `dotfiles/yazi`           |
+| `~/.config/zellij/config.kdl` | `dotfiles/zellij/config.kdl`  |
+| `~/.pi/agent` (`symlink-each`) | `dotfiles/pi`                |

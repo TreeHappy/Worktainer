@@ -6,7 +6,7 @@ watch the boundary.
 
 | Container | Role |
 | --------- | ---- |
-| `sandbox-devbox` | The environment the agent works in, built from [`dev/`](./dev/Dockerfile) — a copy of this repo's own dotfiles. Unprivileged, no sudo, no other way to escalate. |
+| `sandbox-devbox` | The environment the agent works in, built from [`dev/Dockerfile`](./dev/Dockerfile) against the repo's [`dotfiles/`](../dotfiles) folder and the container config [`dev/mise.toml`](./dev/mise.toml) — the same sources a fresh machine, and the VM host later, use. Unprivileged, no sudo, no other way to escalate. |
 | `sandbox-ingress` | The **only way in**. Terminates the published host ports, DNATs each one to its backend, shapes the devbox-facing link, counts what it forwards. |
 | `sandbox-egress` | The **only way out**. The devbox's default gateway: masquerades to the WAN, answers the devbox's DNS, shapes and counts upload/download. |
 | `sandbox-telemetry-*` | One container per backend, all fed the same spans so three stores and three UIs can be compared side by side. |
@@ -26,8 +26,8 @@ sandbox/
                           cannot be expressed in compose.yaml)
     check                 acceptance checks
   dev/
-    Dockerfile            the devbox image
-    mise.toml, bashrc, …  copies of the repo-root dotfile sources
+    Dockerfile            the devbox image (context = repo root; copies dotfiles/)
+    mise.toml             the container's config: [tools] + [dotfiles]
   ingress/
     Dockerfile, entrypoint.sh, metrics.sh
     README.md             DNAT, shaping, counters, environment variables
@@ -221,10 +221,11 @@ bin/sandbox nft ingress
 ## Prerequisites
 
 Podman, podman-compose and rootless networking come from
-`[bootstrap.packages]` in `mise.toml`, which `mise bootstrap` installs — see
-[New machine](../docs/new-machine.md#one-shot-bootstrap):
+`[bootstrap.packages]` in the repo-root `mise.toml`, which `mise bootstrap`
+installs — see [New machine](../docs/new-machine.md#one-shot-bootstrap):
 
 ```sh
+cd /workspace
 mise bootstrap            # installs apt:podman, apt:podman-compose, apt:uidmap, apt:passt
 ```
 
@@ -242,12 +243,12 @@ bin/sandbox down          # stop, keep the networks
 bin/sandbox clean         # stop, drop volumes, images and networks
 ```
 
-`up` runs `dev-sync` first: `dev/` holds a **copy** of the repo's `mise.toml`
-and dotfile sources (the originals stay at the root, and those are the ones to
-edit). Run it by hand after editing a root config outside of a build:
+Edits to a dotfile reach the image on the next build: the context is the repo
+root and the Dockerfile copies `dotfiles/` and `sandbox/dev/mise.toml`
+directly, so there is nothing to sync first.
 
 ```sh
-bin/sandbox dev-sync
+bin/sandbox build         # compose build (context = repo root)
 ```
 
 ### Turning the knobs

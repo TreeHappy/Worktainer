@@ -9,6 +9,7 @@ provide it), `libatomic1` (needed by Node, in the devbox image — see
 installed by `mise bootstrap`).
 
 ```sh
+cd /workspace    # mise.toml lives at the repo root; the sources are in dotfiles/
 mise install     # install/refresh everything in [tools]
 mise upgrade     # move the "latest" pins to newer releases
 ```
@@ -18,7 +19,8 @@ Versions are pinned to `latest`, so there is no lock file: `mise upgrade`
 
 ## Installed tools
 
-The list mirrors `[tools]` in `mise.toml`, alphabetically.
+The list mirrors `[tools]` in `mise.toml` (repo root; the container's copy is
+`sandbox/dev/mise.toml`), alphabetically.
 
 | Tool | What it is | Wired up in this repo |
 | ---- | ---------- | --------------------- |
@@ -247,8 +249,9 @@ theme for fenced code blocks; it cannot load bat's `.tmTheme`, so it uses
 
 ## Adding or removing a tool
 
-1. Add/remove the entry in `[tools]` (keep it alphabetical).
-2. Run `mise install`.
+1. Add/remove the entry in `[tools]` in `mise.toml` and in
+   `sandbox/dev/mise.toml` (keep it alphabetical in both).
+2. Run `mise install` (from the repo root).
 
 ```toml
 [tools]

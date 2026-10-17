@@ -10,27 +10,34 @@ telemetry backends that watch the boundary. See
 **[Sandbox](./docs/sandbox.md)**.
 
 Everything — the CLI tools, the config files, and the few system packages mise
-cannot install per-user — is declared in one `mise.toml`:
+cannot install per-user — is declared in `mise.toml` at the repo root, and the
+config sources it deploys live together in `dotfiles/`:
 
 - `[tools]` — installs the CLI tools (carapace, starship, atuin, zellij,
   neovim, node, jj, lazygit, workmux, yazi, …) into `~/.local/share/mise`, as
   prebuilt binaries, no `sudo`.
-- `[dotfiles]` — deploys the tracked configs into `$HOME` as symlinks.
+- `[dotfiles]` — deploys the tracked configs in `dotfiles/` into `$HOME` as symlinks.
 - `[bootstrap.packages]` — a handful of apt packages (podman and its rootless
   helpers, for the sandbox).
 
 So a new machine reproduces the whole environment with:
 
 ```sh
+cd /workspace    # mise.toml lives at the repo root
 mise install     # install the CLI tools
 mise dot apply   # deploy the dotfiles into $HOME
 mise bootstrap   # the apt packages in [bootstrap.packages]
 ```
 
+The sources in `dotfiles/` are shared by the container image, a fresh machine,
+and a VM host later. The image carries its own copy of the manifest at
+`sandbox/dev/mise.toml` (same `[tools]` and `[dotfiles]`, no
+`[bootstrap.packages]`).
+
 ## Container quick start
 
 ```sh
-docker build -t worktainer sandbox/dev
+docker build -f sandbox/dev/Dockerfile -t worktainer .   # from the repo root
 docker run -it worktainer
 ```
 
@@ -39,32 +46,36 @@ that owns the mise toolchain and the dotfiles checkout: it installs mise, runs
 `mise install && mise dot apply` (plus `bat cache --build`), and drops you into
 bash with zellij auto-started.
 
-Its build context is `sandbox/dev/`, which holds the Dockerfile plus **copies**
-of the dotfile sources it needs (the root ones stay the source of truth).
-`bin/sandbox dev-sync` refreshes the copies.
+The build context is the repository root, and the image's only `COPY`s take
+`dotfiles/` (the real sources, so there are no copies to refresh) and
+`sandbox/dev/mise.toml` (the container's config). It still ships nothing else:
+no `docs/`, no `.git`, no other sandbox services (`.dockerignore` and the
+selective `COPY` keep it that way).
 
 ## Layout
 
 ```
-mise.toml               [tools] + [dotfiles] + [bootstrap.packages]
-bashrc                  -> ~/.bashrc (aliases, fzf colours, mise/starship/… init)
-atuin/config.toml       -> ~/.config/atuin/config.toml
-bat/                    -> ~/.config/bat (config + vendored Catppuccin Frappé theme)
-eza/theme.yml           -> ~/.config/eza/theme.yml (Catppuccin Frappé)
-hunk/config.toml        -> ~/.config/hunk/config.toml (Catppuccin Frappé)
-jjui/                   -> ~/.config/jjui (config + Catppuccin Frappé theme)
-lazygit/config.yml      -> ~/.config/lazygit/config.yml (Catppuccin Frappé)
-leaf/                   -> ~/.config/leaf (config + Catppuccin Frappé theme)
-opencode/opencode.json  -> ~/.config/opencode/opencode.json (MCP servers)
-opencode/cli.json       -> ~/.config/opencode/cli.json (TUI settings)
-pi/                     -> ~/.pi/agent (settings + vendored Catppuccin Frappé theme)
-procs/config.toml       -> ~/.config/procs/config.toml (Catppuccin Frappé)
-starship.toml           -> ~/.config/starship.toml (Catppuccin Frappé palette)
-workmux/config.yaml     -> ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
-yazi/                   -> ~/.config/yazi (vendored Catppuccin Frappé flavor)
-zellij/config.kdl       -> ~/.config/zellij/config.kdl
+dotfiles/               every config source (the manifest lives at the repo root)
+  bashrc                -> ~/.bashrc (aliases, fzf colours, mise/starship/… init)
+  atuin/config.toml     -> ~/.config/atuin/config.toml
+  bat/                  -> ~/.config/bat (config + vendored Catppuccin Frappé theme)
+  eza/theme.yml         -> ~/.config/eza/theme.yml (Catppuccin Frappé)
+  hunk/config.toml      -> ~/.config/hunk/config.toml (Catppuccin Frappé)
+  jjui/                 -> ~/.config/jjui (config + Catppuccin Frappé theme)
+  lazygit/config.yml    -> ~/.config/lazygit/config.yml (Catppuccin Frappé)
+  leaf/                 -> ~/.config/leaf (config + Catppuccin Frappé theme)
+  opencode/opencode.json -> ~/.config/opencode/opencode.json (MCP servers)
+  opencode/cli.json     -> ~/.config/opencode/cli.json (TUI settings)
+  pi/                   -> ~/.pi/agent (settings + vendored Catppuccin Frappé theme)
+  procs/config.toml     -> ~/.config/procs/config.toml (Catppuccin Frappé)
+  starship.toml         -> ~/.config/starship.toml (Catppuccin Frappé palette)
+  workmux/config.yaml   -> ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
+  yazi/                 -> ~/.config/yazi (vendored Catppuccin Frappé flavor)
+  zellij/config.kdl     -> ~/.config/zellij/config.kdl
+mise.toml               host config: [tools] + [dotfiles] + [bootstrap.packages]
 sandbox/                the multi-container sandbox (devbox + controllers + telemetry)
 sandbox/dev/Dockerfile  the devbox image (was the root Dockerfile)
+sandbox/dev/mise.toml   container config: [tools] + [dotfiles]
 docs/                   documentation
 ```
 

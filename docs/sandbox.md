@@ -40,27 +40,30 @@ shapes and reports what crosses it.
 ## Where the devbox image lives
 
 The devbox Dockerfile was the repo root's `Dockerfile`; it now lives in
-`sandbox/dev/` together with **copies** of the dotfile sources it needs. The
-root sources are still the ones to edit; `bin/sandbox dev-sync` (run
-automatically by `build` and `up`) refreshes the copies.
+`sandbox/dev/`. The image builds from the repository root and copies two
+things: the `dotfiles/` folder with every config source, and
+`sandbox/dev/mise.toml`, the container's own copy of the manifest. There is no
+mirror of the sources to refresh, so an edit to a dotfile lands in the next
+build.
 
 ```mermaid
 flowchart LR
-    ROOT["repo root<br/>mise.toml, bashrc, bat/, …<br/>(edit these)"] -->|"bin/sandbox dev-sync"| DEV["sandbox/dev/<br/>Dockerfile + copies"]
-    DEV -->|"podman build"| IMG["localhost/sandbox-devbox:latest"]
+    DOT["dotfiles/<br/>every config source<br/>(edit these)"] -->|"podman build -f sandbox/dev/Dockerfile ."| IMG["localhost/sandbox-devbox:latest"]
+    CFG["sandbox/dev/mise.toml<br/>container config"] --> IMG
     IMG --> BOX["sandbox-devbox"]
 ```
 
 ## Quick start
 
-Prerequisites come from `mise.toml` — [`[bootstrap.packages]`](#installing-podman)
-installs podman, podman-compose and rootless networking helpers:
+Prerequisites come from `[bootstrap.packages]` in the repo-root `mise.toml`
+(see [Installing podman](#installing-podman)) — it installs podman,
+podman-compose and rootless networking helpers:
 
 ```sh
-mise bootstrap                # tools, dotfiles and the apt packages
+cd /workspace && mise bootstrap # tools, dotfiles and the apt packages
 cd sandbox
-bin/sandbox up                # create the networks, build, start everything
-bin/sandbox check             # acceptance checks
+bin/sandbox up                  # create the networks, build, start everything
+bin/sandbox check               # acceptance checks
 ```
 
 Then:
@@ -76,8 +79,8 @@ Then:
 ## Installing podman
 
 Podman is not a mise `[tools]` entry — it needs capabilities a per-user binary
-cannot set up — so it is declared in `[bootstrap.packages]` and installed with
-`apt` by `mise bootstrap`:
+cannot set up — so it is declared in `[bootstrap.packages]` in the repo-root
+`mise.toml` and installed with `apt` by `mise bootstrap`:
 
 ```toml
 [bootstrap.packages]
@@ -97,7 +100,7 @@ cannot set up — so it is declared in `[bootstrap.packages]` and installed with
 | `sandbox/bin/sandbox` | the driver (`up`, `down`, `build`, `check`, `rules`, …) |
 | `sandbox/bin/networks` | creates the three networks, whose options compose cannot express |
 | `sandbox/bin/check` | acceptance checks |
-| `sandbox/dev/` | devbox Dockerfile + copies of the dotfile sources |
+| `sandbox/dev/` | devbox Dockerfile + the container's `mise.toml` (built against the repo root's `dotfiles/`) |
 | `sandbox/ingress/` | inbound DNAT, shaping, counters |
 | `sandbox/egress/` | masquerade, DNS, shaping, counters |
 | `sandbox/telemetry-*/` | one backend each: o11ylite, otel-desktop-viewer, otelop |

@@ -3,10 +3,9 @@
 #
 # Usage: sandbox <command> [args]
 #
-#   dev-sync           copy the root mise.toml + dotfile sources into sandbox/dev/
 #   networks up|down   create/remove the three networks (needed before `up`)
 #   config             render and validate the compose file
-#   build              dev-sync + build the images
+#   build              build the images
 #   up                 networks up + build + start everything (detached)
 #   down               stop and remove the containers (keeps the networks)
 #   clean              down + remove volumes, images and networks
@@ -23,13 +22,13 @@ set -eu
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 sandbox=$(dirname -- "$here")      # .../sandbox
-repo=$(dirname -- "$sandbox")      # repository root
 compose="$sandbox/compose.yaml"
 project=sandbox
 
-# What the devbox image is built from. These are copies of the repo-root
-# sources: the root copies are the ones to edit, `dev-sync` refreshes these.
-DEV_ITEMS="mise.toml bashrc starship.toml atuin bat eza hunk jjui lazygit leaf opencode pi procs workmux yazi zellij"
+# The devbox image builds from the repository root (compose sets the context
+# and Dockerfile), so it COPYies the repo's dotfiles/ folder and
+# sandbox/dev/mise.toml directly — there is no mirrored copy of the sources to
+# refresh.
 
 compose_cmd() {
     podman-compose -p "$project" -f "$compose" "$@"
@@ -41,10 +40,9 @@ sandbox - a devbox that can only reach the network through its controllers
 
 Usage: $(basename "$0") <command> [args]
 
-  dev-sync           copy the root mise.toml + dotfile sources into sandbox/dev/
   networks up|down   create/remove the three networks (needed before \`up\`)
   config             render and validate the compose file
-  build              dev-sync + build the images
+  build              build the images
   up                 networks up + build + start everything (detached)
   down               stop and remove the containers (keeps the networks)
   clean              down + remove volumes, images and networks
@@ -60,42 +58,7 @@ See sandbox/README.md for the topology.
 EOF
 }
 
-# Refresh the devbox build context from the repo root.
-dev_sync() {
-    dest="$sandbox/dev"
-    mkdir -p "$dest"
-
-    for item in $DEV_ITEMS; do
-        if [ ! -e "$repo/$item" ]; then
-            echo "dev-sync: warning: $repo/$item no longer exists" >&2
-            continue
-        fi
-        rm -rf "$dest/$item"
-        cp -a "$repo/$item" "$dest/"
-    done
-
-    # Drop anything that has since disappeared from the root, so the build
-    # context never keeps a dotfile the repo no longer has. Dockerfile and
-    # README.md belong to this folder and are always kept.
-    for entry in "$dest"/*; do
-        [ -e "$entry" ] || continue
-        base=$(basename -- "$entry")
-        case " Dockerfile README.md $DEV_ITEMS " in
-            *" $base "*) ;;
-            *)
-                rm -rf "$entry"
-                echo "dev-sync: removed $base (gone from the repo root)"
-                ;;
-        esac
-    done
-
-    echo "dev-sync: $dest refreshed from $repo"
-}
-
 case "${1:-}" in
-dev-sync)
-    dev_sync
-    ;;
 networks)
     shift
     exec "$here/networks" "$@"
@@ -104,11 +67,9 @@ config)
     compose_cmd config
     ;;
 build)
-    dev_sync
     compose_cmd build
     ;;
 up)
-    dev_sync
     "$here/networks" up
     compose_cmd build
     compose_cmd up -d

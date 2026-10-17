@@ -3,41 +3,50 @@
 This repository is managed with [mise](https://mise.jdx.dev/) using the
 [`mise dotfiles`](https://mise.jdx.dev/dotfiles.html) feature (alias `mise dot`).
 
+The environment is declared in `mise.toml` at the repo root, and the config
+sources it deploys live together in one folder, `dotfiles/`. The same sources
+feed the container image and a fresh machine; the image carries its own copy of
+the manifest at `sandbox/dev/mise.toml`.
+
 `mise.toml` does three jobs:
 
 - `[tools]` — installs the CLI tools this setup needs (carapace, starship,
   atuin, zellij, neovim, node, jj, …).
-- `[dotfiles]` — deploys the config files in this repo into `$HOME` as symlinks.
+- `[dotfiles]` — deploys the config files in `dotfiles/` into `$HOME` as symlinks.
 - `[bootstrap.packages]` — a few apt packages mise cannot install as per-user
   tools (podman and its rootless helpers, for the [sandbox](./sandbox.md)).
 
-All three are driven by the same `mise.toml`, so a new machine can reproduce
-the whole environment with `mise install && mise dot apply` (plus
-`mise bootstrap` for the apt packages).
+`sandbox/dev/mise.toml` is the container's variant of the same config: the same
+`[tools]` and `[dotfiles]`, minus `[bootstrap.packages]` (the image never runs
+`mise bootstrap`). Run mise from the repo root; a new machine reproduces the
+whole environment with `mise install && mise dot apply` (plus `mise bootstrap`
+for the apt packages).
 
 ## Layout
 
 ```
-mise.toml               tools + [dotfiles] entries
-bashrc                  source for ~/.bashrc (aliases, truecolour, fzf colours, mise/starship/… init)
-atuin/config.toml       source for ~/.config/atuin/config.toml
-bat/                    bat config + vendored Catppuccin Frappé theme
-eza/theme.yml           source for ~/.config/eza/theme.yml (Catppuccin Frappé)
-hunk/config.toml        source for ~/.config/hunk/config.toml (Catppuccin Frappé)
-jjui/                   jjui config + Catppuccin Frappé theme
-lazygit/config.yml      source for ~/.config/lazygit/config.yml (Catppuccin Frappé)
-leaf/                   leaf config + Catppuccin Frappé theme
-opencode/opencode.json  source for ~/.config/opencode/opencode.json (MCP servers)
-opencode/cli.json       source for ~/.config/opencode/cli.json (TUI settings)
-pi/                     pi settings + vendored Catppuccin Frappé theme
-procs/config.toml       source for ~/.config/procs/config.toml (Catppuccin Frappé)
-starship.toml           source for ~/.config/starship.toml (Catppuccin Frappé palette, jj prompt)
-workmux/config.yaml     source for ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
-yazi/                   Yazi file manager config (theme = Catppuccin Frappé)
-yazi/flavors/           vendored Catppuccin Frappé flavor
-zellij/config.kdl       source for ~/.config/zellij/config.kdl
-sandbox/                a multi-container sandbox: devbox + ingress/egress + telemetry
-docs/                   this documentation
+dotfiles/                every config source (the manifest lives at the repo root)
+  bashrc                 source for ~/.bashrc (aliases, truecolour, fzf colours, mise/starship/… init)
+  atuin/config.toml      source for ~/.config/atuin/config.toml
+  bat/                   bat config + vendored Catppuccin Frappé theme
+  eza/theme.yml          source for ~/.config/eza/theme.yml (Catppuccin Frappé)
+  hunk/config.toml       source for ~/.config/hunk/config.toml (Catppuccin Frappé)
+  jjui/                  jjui config + Catppuccin Frappé theme
+  lazygit/config.yml     source for ~/.config/lazygit/config.yml (Catppuccin Frappé)
+  leaf/                  leaf config + Catppuccin Frappé theme
+  opencode/opencode.json source for ~/.config/opencode/opencode.json (MCP servers)
+  opencode/cli.json      source for ~/.config/opencode/cli.json (TUI settings)
+  pi/                    pi settings + vendored Catppuccin Frappé theme
+  procs/config.toml      source for ~/.config/procs/config.toml (Catppuccin Frappé)
+  starship.toml          source for ~/.config/starship.toml (Catppuccin Frappé palette, jj prompt)
+  workmux/config.yaml    source for ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
+  yazi/                  Yazi file manager config (theme = Catppuccin Frappé)
+  yazi/flavors/          vendored Catppuccin Frappé flavor
+  zellij/config.kdl      source for ~/.config/zellij/config.kdl
+mise.toml                host config: [tools] + [dotfiles] + [bootstrap.packages]
+sandbox/                 a multi-container sandbox: devbox + ingress/egress + telemetry
+sandbox/dev/mise.toml    container config: [tools] + [dotfiles]
+docs/                    this documentation
 ```
 
 ## Version control
@@ -52,24 +61,27 @@ expects.
 
 ## Managed dotfiles
 
-| Target                            | Source              | Mode                |
-| --------------------------------- | ------------------- | ------------------- |
-| `~/.bashrc`                       | `bashrc`            | `symlink` (default) |
-| `~/.config/atuin/config.toml`     | `atuin/config.toml` | `symlink` (default) |
-| `~/.config/bat`                   | `bat`               | `symlink-each`      |
-| `~/.config/eza/theme.yml`         | `eza/theme.yml`     | `symlink` (default) |
-| `~/.config/hunk/config.toml`      | `hunk/config.toml`  | `symlink` (default) |
-| `~/.config/jjui`                  | `jjui`              | `symlink-each`      |
-| `~/.config/lazygit/config.yml`    | `lazygit/config.yml` | `symlink` (default) |
-| `~/.config/leaf`                  | `leaf`              | `symlink-each`      |
-| `~/.config/opencode/cli.json`     | `opencode/cli.json` | `symlink` (default) |
-| `~/.config/opencode/opencode.json` | `opencode/opencode.json` | `symlink` (default) |
-| `~/.config/procs/config.toml`     | `procs/config.toml` | `symlink` (default) |
-| `~/.config/starship.toml`         | `starship.toml`     | `symlink` (default) |
-| `~/.config/workmux/config.yaml`   | `workmux/config.yaml` | `symlink` (default) |
-| `~/.config/yazi`                  | `yazi`              | `symlink-each`      |
-| `~/.config/zellij/config.kdl`     | `zellij/config.kdl` | `symlink` (default) |
-| `~/.pi/agent`                     | `pi`                | `symlink-each`      |
+Sources are relative to `mise.toml` at the repo root, so each source reads
+`dotfiles/<path>`.
+
+| Target                            | Source                          | Mode                |
+| --------------------------------- | ------------------------------- | ------------------- |
+| `~/.bashrc`                       | `dotfiles/bashrc`               | `symlink` (default) |
+| `~/.config/atuin/config.toml`     | `dotfiles/atuin/config.toml`    | `symlink` (default) |
+| `~/.config/bat`                   | `dotfiles/bat`                  | `symlink-each`      |
+| `~/.config/eza/theme.yml`         | `dotfiles/eza/theme.yml`        | `symlink` (default) |
+| `~/.config/hunk/config.toml`      | `dotfiles/hunk/config.toml`     | `symlink` (default) |
+| `~/.config/jjui`                  | `dotfiles/jjui`                 | `symlink-each`      |
+| `~/.config/lazygit/config.yml`    | `dotfiles/lazygit/config.yml`   | `symlink` (default) |
+| `~/.config/leaf`                  | `dotfiles/leaf`                 | `symlink-each`      |
+| `~/.config/opencode/cli.json`     | `dotfiles/opencode/cli.json`    | `symlink` (default) |
+| `~/.config/opencode/opencode.json` | `dotfiles/opencode/opencode.json` | `symlink` (default) |
+| `~/.config/procs/config.toml`     | `dotfiles/procs/config.toml`    | `symlink` (default) |
+| `~/.config/starship.toml`         | `dotfiles/starship.toml`        | `symlink` (default) |
+| `~/.config/workmux/config.yaml`   | `dotfiles/workmux/config.yaml`  | `symlink` (default) |
+| `~/.config/yazi`                  | `dotfiles/yazi`                 | `symlink-each`      |
+| `~/.config/zellij/config.kdl`     | `dotfiles/zellij/config.kdl`    | `symlink` (default) |
+| `~/.pi/agent`                     | `dotfiles/pi`                   | `symlink-each`      |
 
 The tools this repo themes are set to Catppuccin Frappé — `bat`, `eza`, `fzf`,
 `hunk`, `jjui`, `lazygit`, `leaf`, `opencode`, `pi`, `procs`, `starship`,
@@ -87,10 +99,10 @@ ad-hoc flavors/themes) do not add files to this repo. Use
 ## Quick start
 
 ```sh
-cd /workspace        # or wherever you cloned this repo
-mise install         # install the CLI tools
-mise dot apply       # create the symlinks in $HOME
-mise dot status      # confirm everything is applied
+cd /workspace         # mise.toml lives at the repo root
+mise install          # install the CLI tools
+mise dot apply        # create the symlinks in $HOME
+mise dot status       # confirm everything is applied
 ```
 
 ## Documentation

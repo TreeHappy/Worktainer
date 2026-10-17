@@ -1,11 +1,15 @@
 # Development container for these dotfiles.
 #
-# Build context: this directory. `sandbox/dev/` holds a copy of the repo's
-# mise.toml and dotfile sources — the originals live at the repo root and are
-# the ones to edit. `bin/sandbox dev-sync` refreshes this copy, and `build`/
-# `up` run it for you, so the image never lags behind the root.
+# Build context: the repository root, so the image reads the real sources
+# instead of a synced copy. Two things are copied in: the repo's `dotfiles/`
+# folder (every config source) and `sandbox/dev/mise.toml`, this image's own
+# config. Together they mirror the repo layout — `mise.toml` at the checkout
+# root with the sources under `dotfiles/` — so the image ships nothing else
+# (no docs/, no .git, no other sandbox services).
 #
-# Build: podman build -t worktainer sandbox/dev    # or: bin/sandbox build
+# Build (from the repo root):
+#   podman build -f sandbox/dev/Dockerfile -t worktainer .
+# or: bin/sandbox build            # sets the context for you
 # Run:   podman run -it worktainer
 FROM ubuntu:devel
 
@@ -29,10 +33,14 @@ ENV HOME="/home/dev"
 ENV PATH="/home/dev/.local/bin:${PATH}"
 RUN curl https://mise.run | sh
 
-# Create the checkout as `dev` so it owns the working directory
+# Create the checkout as `dev` so it owns the working directory. The checkout
+# mirrors the repo root: mise.toml (this image's config, from sandbox/dev/)
+# plus the repo's dotfiles/ folder, so every [dotfiles] source resolves inside
+# the checkout — the same commands as docs/new-machine.md, run unchanged.
 RUN mkdir -p /home/dev/src/dotfiles
 WORKDIR /home/dev/src/dotfiles
-COPY --chown=dev:dev . .
+COPY --chown=dev:dev dotfiles/ ./dotfiles/
+COPY --chown=dev:dev sandbox/dev/mise.toml ./mise.toml
 
 # useradd copies /etc/skel into $HOME, including a regular ~/.bashrc that would
 # block the symlink; drop it so the repo's bashrc takes over (same for any other

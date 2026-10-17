@@ -1,3 +1,11 @@
+# Host configuration for this repository: the CLI tools, the apt packages mise
+# cannot install per-user, and the dotfiles to deploy. Run mise from the repo
+# root — mise finds config by searching upward from the working directory.
+#
+# The config sources themselves live in `dotfiles/`, one folder shared by this
+# file, `sandbox/dev/mise.toml` (the devbox image) and a fresh machine. Relative
+# [dotfiles] sources resolve from this file's directory, hence the prefix.
+
 [tools]
 atuin = "latest"
 bat = "latest"
@@ -28,22 +36,22 @@ zellij = "latest"
 zoxide = "latest"
 
 [dotfiles]
-"~/.bashrc" = { source = "bashrc" }
-"~/.config/atuin/config.toml" = { source = "atuin/config.toml" }
-"~/.config/bat" = { source = "bat", mode = "symlink-each" }
-"~/.config/eza/theme.yml" = { source = "eza/theme.yml" }
-"~/.config/hunk/config.toml" = { source = "hunk/config.toml" }
-"~/.config/jjui" = { source = "jjui", mode = "symlink-each" }
-"~/.config/lazygit/config.yml" = { source = "lazygit/config.yml" }
-"~/.config/leaf" = { source = "leaf", mode = "symlink-each" }
-"~/.config/opencode/cli.json" = { source = "opencode/cli.json" }
-"~/.config/opencode/opencode.json" = { source = "opencode/opencode.json" }
-"~/.config/procs/config.toml" = { source = "procs/config.toml" }
-"~/.config/starship.toml" = { source = "starship.toml" }
-"~/.config/workmux/config.yaml" = { source = "workmux/config.yaml" }
-"~/.config/yazi" = { source = "yazi", mode = "symlink-each" }
-"~/.config/zellij/config.kdl" = { source = "zellij/config.kdl" }
-"~/.pi/agent" = { source = "pi", mode = "symlink-each" }
+"~/.bashrc" = { source = "dotfiles/bashrc" }
+"~/.config/atuin/config.toml" = { source = "dotfiles/atuin/config.toml" }
+"~/.config/bat" = { source = "dotfiles/bat", mode = "symlink-each" }
+"~/.config/eza/theme.yml" = { source = "dotfiles/eza/theme.yml" }
+"~/.config/hunk/config.toml" = { source = "dotfiles/hunk/config.toml" }
+"~/.config/jjui" = { source = "dotfiles/jjui", mode = "symlink-each" }
+"~/.config/lazygit/config.yml" = { source = "dotfiles/lazygit/config.yml" }
+"~/.config/leaf" = { source = "dotfiles/leaf", mode = "symlink-each" }
+"~/.config/opencode/cli.json" = { source = "dotfiles/opencode/cli.json" }
+"~/.config/opencode/opencode.json" = { source = "dotfiles/opencode/opencode.json" }
+"~/.config/procs/config.toml" = { source = "dotfiles/procs/config.toml" }
+"~/.config/starship.toml" = { source = "dotfiles/starship.toml" }
+"~/.config/workmux/config.yaml" = { source = "dotfiles/workmux/config.yaml" }
+"~/.config/yazi" = { source = "dotfiles/yazi", mode = "symlink-each" }
+"~/.config/zellij/config.kdl" = { source = "dotfiles/zellij/config.kdl" }
+"~/.pi/agent" = { source = "dotfiles/pi", mode = "symlink-each" }
 
 [bootstrap.packages]
 "apt:podman" = "latest"

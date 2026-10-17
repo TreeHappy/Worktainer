@@ -1,0 +1,6 @@
+# Keep the devbox build context (the repository root — see
+# sandbox/dev/Dockerfile) down to what the image actually copies: dotfiles/ and
+# sandbox/dev/mise.toml. VCS metadata is bulk and changes constantly; nothing in
+# the image reads it.
+.git
+.jj
