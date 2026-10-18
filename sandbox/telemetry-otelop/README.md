@@ -37,7 +37,8 @@ export OTEL_TRACES_EXPORTER="otlp"
 ```
 
 The controllers already do this by default (`OTEL_ENDPOINTS` in
-`compose.yaml`). Querying the counters from the host:
+[`sandbox-telemetry-otelop.container`](../quadlet/sandbox-telemetry-otelop.container)).
+Querying the counters from the host:
 
 ```sh
 curl -s http://127.0.0.1:9421/graphql \

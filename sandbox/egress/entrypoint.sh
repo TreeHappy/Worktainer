@@ -13,13 +13,15 @@
 #   5. upload, download, DNS and proxied byte counters are exported as OTel
 #      spans.
 #
-# All of it is driven by environment variables (see compose.yaml for values).
+# All of it is driven by environment variables (see
+# sandbox/quadlet/environments/egress.env for the values).
 # Set DRY_RUN=1 to print the nftables ruleset it would install and exit —
 # no side effects, so it can be run outside a container.
 set -eu
 
 # --------------------------------------------------------------------------
-# Configuration (defaults mirror compose.yaml)
+# Configuration (the defaults here mirror environments/egress.env, which is
+# what the container actually gets)
 # --------------------------------------------------------------------------
 : "${CTRL_IP:=10.89.0.2}"          # control-plane address
 : "${DATA_IP:=10.89.1.2}"          # data-plane address (the devbox's gateway)

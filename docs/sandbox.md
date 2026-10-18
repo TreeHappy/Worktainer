@@ -5,9 +5,10 @@ agent to work in, two controllers that decide what it can reach, a secrets
 server the stack authenticates against, and telemetry backends that watch the
 boundary.
 
-The devbox is built from the same dotfiles as everything else in this repo —
-it *is* the environment described in [New machine](./new-machine.md) and
-[Tools](./tools.md), moved behind a firewall.
+The devbox is built from the same configuration sources as everything else in
+this repo — it *is* the environment described in
+[New machine](./new-machine.md) and [Tools](./tools.md), moved behind a
+firewall.
 
 ```mermaid
 flowchart LR
@@ -46,31 +47,37 @@ proxy read them, never the agent.
 
 ## Where the devbox image lives
 
-The devbox Dockerfile was the repo root's `Dockerfile`; it now lives in
-`sandbox/dev/`. The image builds from the repository root and copies four
-things: the `dotfiles/` folder with every config source, `sandbox/dev/mise.toml`
-(the container's own copy of the manifest), `sshd-init.sh`, and the generated
-sandbox CA. There is no mirror of the sources to refresh, so an edit to a
-dotfile lands in the next build.
+[`nix/images/devbox.nix`](../nix/images/devbox.nix), built by `nix build` and
+loaded with `podman load`. It reads `nix/configs/files/` and
+`nix/lib/tools.nix` directly, so an edit to a config source lands in the next
+build with nothing to mirror. The sandbox CA is the one thing that is *not* in
+it: it is generated per machine and bind-mounted read-only, which is why the
+private key can never reach the store.
 
 ```mermaid
 flowchart LR
-    DOT["dotfiles/<br/>every config source<br/>(edit these)"] -->|"podman build -f sandbox/dev/Dockerfile ."| IMG["localhost/sandbox-devbox:latest"]
-    CFG["sandbox/dev/mise.toml<br/>container config"] --> IMG
-    IMG --> BOX["sandbox-devbox"]
+    DOT["nix/configs/files/<br/>every config source<br/>(edit these)"] -->|"nix build"| IMG["localhost/sandbox-devbox:latest"]
+    TOOLS["nix/lib/tools.nix<br/>28 packages"] --> IMG
+    IMG -->|"podman load"| BOX["sandbox-devbox"]
 ```
+
+The other two images this repo owns — the ingress and egress controllers — are
+[`nix/images/ingress.nix`](../nix/images/ingress.nix) and
+[`nix/images/egress.nix`](../nix/images/egress.nix). The other four containers
+are upstream images (OpenBao and the three telemetry backends), pulled by
+podman.
 
 ## Quick start
 
-Prerequisites come from `[bootstrap.packages]` in the repo-root `mise.toml`
-(see [Installing podman](#installing-podman)) — it installs podman,
-podman-compose and rootless networking helpers:
+Prerequisites are `nix` for the tools and images, and podman from apt (see
+[Installing podman](#installing-podman)):
 
 ```sh
-cd /workspace && mise bootstrap # tools, dotfiles and the apt packages
-cd sandbox
-bin/sandbox up                  # create the networks, build, start everything
-bin/sandbox check               # acceptance checks
+sudo apt install podman uidmap passt   # the sandbox only
+bin/sandbox ca                         # mint the sandbox CA (also done by `up`)
+bin/sandbox link                       # link the quadlet units
+bin/sandbox up                         # build the images, load, start everything
+bin/sandbox check                      # acceptance checks
 ```
 
 Then:
@@ -96,30 +103,31 @@ ssh -p 2222 dev@localhost
 
 ## Installing podman
 
-Podman is not a mise `[tools]` entry — it needs capabilities a per-user binary
-cannot set up — so it is declared in `[bootstrap.packages]` in the repo-root
-`mise.toml` and installed with `apt` by `mise bootstrap`:
+Podman is not a nixpkgs entry here — rootless podman from nixpkgs drags in
+subuid handling and cgroup setup that is genuinely painful outside NixOS, and
+nothing in this repo is blocked by keeping it on apt:
 
-```toml
-[bootstrap.packages]
-"apt:podman" = "latest"
-"apt:podman-compose" = "latest"
-"apt:uidmap" = "latest"      # rootless user namespaces
-"apt:passt" = "latest"       # rootless networking
+```sh
+sudo apt install podman uidmap passt
 ```
 
-`mise bootstrap packages status` reports whether they are present.
+`uidmap` is what makes rootless user namespaces work (`newuidmap`); `passt` is
+the rootless networking backend. `podman info` should report no complaints
+about either.
+
+Everything else the sandbox needs comes from the flake: the images, the tools,
+and the `bao` CLI the devbox's `sshd-init` uses.
 
 ## Layout
 
 | Path | What |
 | ---- | ---- |
-| `sandbox/compose.yaml` | the stack: three networks, seven containers |
-| `sandbox/bin/sandbox` | the driver (`up`, `down`, `build`, `ca`, `check`, `rules`, …) |
-| `sandbox/bin/networks` | creates the three networks, whose options compose cannot express |
+| `sandbox/quadlet/` | the stack, as systemd units: three networks, three volumes, seven containers, and the env files they share |
+| `sandbox/bin/sandbox` | the driver (`link`, `up`, `down`, `build`, `ca`, `check`, `rules`, …) |
 | `sandbox/bin/check` | acceptance checks |
 | `sandbox/ca/` | the sandbox CA, generated by `bin/sandbox ca` (never committed) |
-| `sandbox/dev/` | devbox Dockerfile + the container's `mise.toml` + the sshd boot helper (built against the repo root's `dotfiles/`) |
+| `nix/images/` | the ingress, egress and devbox images, as nix derivations |
+| `sandbox/dev/` | the container's boot sequence: trust the CA, fetch the keys, run sshd |
 | `sandbox/ingress/` | inbound DNAT, shaping, counters |
 | `sandbox/egress/` | masquerade, DNS, the auth-injecting TLS proxy, shaping, counters |
 | `sandbox/openbao/` | the secrets server: authorized keys, outbound auth headers |
@@ -132,7 +140,7 @@ tuning variables, the acceptance checks and the caveats (including the
 self-referential route the egress has to delete on boot) are all in
 **[`sandbox/README.md`](../sandbox/README.md)**.
 
-Each container explains itself next to its Dockerfile:
+Each container explains itself next to its code:
 
 - [Devbox](../sandbox/dev/README.md)
 - [Ingress](../sandbox/ingress/README.md)

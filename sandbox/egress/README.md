@@ -133,7 +133,7 @@ edit rather than a rebuild.
 container mints — that is what [`bin/sandbox ca`](../ca/README.md) is for — and
 so does any tool inside the devbox that does not read the system trust store
 (Node ships its own root list; Python's `requests` uses certifi), which is why
-compose points `NODE_EXTRA_CA_CERTS` and `REQUESTS_CA_BUNDLE` at the system
+the devbox image points `NODE_EXTRA_CA_CERTS` and `REQUESTS_CA_BUNDLE` at the system
 bundle. Everything the devbox fetches is readable here, in plain text, and the
 devbox's `bin/sandbox check` cannot tell the difference between a real provider
 and this proxy. That is the deal: the sandbox is where you point an agent you
@@ -162,9 +162,11 @@ bin/sandbox shell devbox
 bao kv put secret/egress/anthropic x-api-key="$KEY"
 ```
 
-`compose.yaml` ships two jobs (`api.anthropic.com`, `api.openai.com`) pointing
+[`environments/egress.env`](../quadlet/environments/egress.env) ships two jobs
+(`api.anthropic.com`, `api.openai.com`) pointing
 at secrets that may not exist yet — a job with no secret yet simply injects
-nothing, and the provider answers 401. Change the hosts in `compose.yaml` to
+nothing, and the provider answers 401. Change the hosts in
+[`environments/egress.env`](../quadlet/environments/egress.env) to
 match whatever you actually call.
 
 ### Rotation and failure
@@ -197,7 +199,7 @@ bin/sandbox ca && bin/sandbox build
 
 ## Configuring it later
 
-All of it is a secret plus compose environment. **No rebuild is involved**: the
+All of it is a secret plus one env file. **No rebuild is involved**: the
 devbox neither holds the keys nor compiles the job list, and the CA it trusts is
 already baked in.
 
@@ -212,7 +214,9 @@ already baked in.
        -d '{"data":{"x-api-key":"…","x-org-id":"…"}}'
    ```
 
-2. Add a line to `HEADER_JOBS` in `compose.yaml`:
+2. Add a job to `HEADER_JOBS` in
+   [`environments/egress.env`](../quadlet/environments/egress.env)
+   (semicolon-separated — an env file cannot hold newlines):
 
    ```
    api.<provider>.com bao:secret/egress/<provider>
@@ -235,7 +239,8 @@ interception is not a filter, only the injection is selective.
 
 ### Turn interception off
 
-Empty `HEADER_JOBS` in `compose.yaml`: the `prerouting` chain and the `proxied`
+Empty `HEADER_JOBS` in [`environments/egress.env`](../quadlet/environments/egress.env):
+the `prerouting` chain and the `proxied`
 counter are not installed, the devbox's `https` goes out untouched, and the CA
 sits unused. (The devbox keeps trusting it — harmless, and it means turning it
 back on needs no rebuild.)
@@ -266,7 +271,9 @@ declared, redirect installed, devbox trusting the CA.
 
 ## Environment variables
 
-Defaults live in `entrypoint.sh` and mirror `compose.yaml`.
+Defaults live in `entrypoint.sh` and mirror
+[`environments/egress.env`](../quadlet/environments/egress.env), which is what
+the container actually reads.
 
 | Variable | Default | Meaning |
 | -------- | ------- | ------- |
@@ -277,7 +284,7 @@ Defaults live in `entrypoint.sh` and mirror `compose.yaml`.
 | `DELAY` / `LOSS` | `0ms` / `0%` | netem on both links |
 | `BURST` / `LATENCY` | `64kbit` / `400ms` | tbf burst and latency |
 | `DNS_UPSTREAM` | `9.9.9.9` | resolver dnsmasq forwards to |
-| `HEADER_JOBS` | two providers in compose | `"<host> bao:<mount>/<path>"` lines; empty disables the proxy entirely |
+| `HEADER_JOBS` | two providers in the env file | `"<host> bao:<mount>/<path>"` entries, `;`-separated; empty disables the proxy entirely |
 | `BAO_ADDR` / `BAO_TOKEN` | `http://10.89.1.20:8200` / `sandbox-root-token` | where the header values come from |
 | `BAO_RESYNC` | `300` | seconds between secret re-reads; `0` reads once at boot |
 | `PROXY_PORT` | `8080` | mitmdump's listen port, and the redirect target |
@@ -311,11 +318,11 @@ the traffic for the addon's warnings about the secrets themselves.
 | every `https` call from the devbox fails with a certificate error | the devbox image does not have the sandbox CA (proxy minted its own) | `bin/sandbox ca && bin/sandbox build` |
 | `curl: (7) CONNECT tunnel failed, response 502` | the redirect is installed but nothing is listening | the proxy died; it exits the container on purpose so the restart policy brings it back — read `bin/sandbox logs egress` |
 | provider answers 401 | the job matches but the secret is empty, missing, or under a different host | `bao kv get secret/egress/<provider>`; check `HEADER_JOBS` |
-| `check` SKIPs the `proxied` counter | `HEADER_JOBS` is empty, so nothing is intercepted | set at least one job in `compose.yaml` |
+| `check` SKIPs the `proxied` counter | `HEADER_JOBS` is empty, so nothing is intercepted | set at least one job in `environments/egress.env` |
 
 ## Caveats
 
-- **It is a router, so it needs `ip_forward`.** Set both by compose and again
+- **It is a router, so it needs `ip_forward`.** Set both by the unit and again
   in the entrypoint, because the order in which podman applies sysctls and
   creates interfaces is not something to rely on.
 - **`rp_filter` must be off.** Inbound and outbound traffic use different

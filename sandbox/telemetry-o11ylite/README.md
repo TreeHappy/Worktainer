@@ -33,7 +33,8 @@ export OTEL_TRACES_EXPORTER="otlp"
 ```
 
 The controllers already do this by default (`OTEL_ENDPOINTS` in
-`compose.yaml`). A quick manual check from a controller:
+[`sandbox-telemetry-o11ylite.container`](../quadlet/sandbox-telemetry-o11ylite.container)).
+A quick manual check from a controller:
 
 ```sh
 bin/sandbox exec ingress curl -sS -o /dev/null -w '%{http_code}\n' \

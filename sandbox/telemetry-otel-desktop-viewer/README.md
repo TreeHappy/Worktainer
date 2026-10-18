@@ -22,7 +22,8 @@ flowchart LR
 | Web UI | container port `8000`, reached from the host as **<http://127.0.0.1:9420>** through the ingress |
 | Storage | named volume `otel-desktop-viewer-data`, DuckDB file at `/data/otel-desktop-viewer.duckdb` |
 
-`compose.yaml` passes the flags that make it usable in a container rather than
+[`sandbox-telemetry-otel-desktop-viewer.container`](../quadlet/sandbox-telemetry-otel-desktop-viewer.container)
+passes the flags that make it usable in a container rather than
 on a laptop:
 
 ```
@@ -45,7 +46,7 @@ export OTEL_TRACES_EXPORTER="otlp"
 ```
 
 The controllers already do this by default (`OTEL_ENDPOINTS` in
-`compose.yaml`).
+`sandbox-telemetry-otel-desktop-viewer.container`).
 
 ## Why it earns its place
 

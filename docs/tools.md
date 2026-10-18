@@ -1,26 +1,29 @@
 # Tools
 
-Everything in `[tools]` is installed by [mise](https://mise.jdx.dev/) with
-`mise install` — prebuilt binaries into `~/.local/share/mise`, no distro
-packages and no `sudo`. The only things not managed here are `git` (mise cannot
-provide it), `libatomic1` (needed by Node, in the devbox image — see
-`sandbox/dev/Dockerfile`), and the few apt packages in
-`[bootstrap.packages]` (podman tooling for the [sandbox](../docs/sandbox.md),
-installed by `mise bootstrap`).
+Every tool here is a pinned nixpkgs attribute in
+[`nix/lib/tools.nix`](../nix/lib/tools.nix), installed by home-manager into
+`~/.nix-profile`. No distro packages, no `sudo`, and a lock file: `flake.lock`
+records exactly which versions the profile is.
 
 ```sh
-cd /workspace    # mise.toml lives at the repo root; the sources are in dotfiles/
-mise install     # install/refresh everything in [tools]
-mise upgrade     # move the "latest" pins to newer releases
+cd /workspace    # flake.nix lives at the repo root
+nix flake update nixpkgs                              # move the pins
+home-manager switch --flake .#"$(hostname -s)"       # apply
+nix build .#host-tools                                # ask what changed
 ```
 
-Versions are pinned to `latest`, so there is no lock file: `mise upgrade`
-(or a fresh `mise install`) picks up new releases.
+`git` is part of the tool set even though it has no entry above: jj, jjui,
+lazygit and workmux all shell out to it. Podman stays on apt — see
+[New machine](./new-machine.md#podman-for-the-sandbox-only).
 
 ## Installed tools
 
-The list mirrors `[tools]` in `mise.toml` (repo root; the container's copy is
-`sandbox/dev/mise.toml`), alphabetically.
+The list mirrors the `host` set in
+[`nix/lib/tools.nix`](../nix/lib/tools.nix), alphabetically. Note the names:
+five of these are not the nixpkgs attribute of the same name (`jj` is
+`jujutsu`, `yq` is `yq-go`, `leaf` is `leaf-markdown-viewer`, `pi` is
+`pi-coding-agent`, `node` is `nodejs_22`) — see
+[`nix/README.md`](../nix/README.md).
 
 | Tool | What it is | Wired up in this repo |
 | ---- | ---------- | --------------------- |
@@ -52,20 +55,13 @@ The list mirrors `[tools]` in `mise.toml` (repo root; the container's copy is
 | `zellij` | Terminal multiplexer with layouts and sessions | Auto-starts (last line of `bashrc`); config in `zellij/config.kdl` |
 | `zoxide` | Smarter `cd` that learns your directories (`z`, `zi`) | `zoxide init bash` |
 
-### Backends
+### Where each one comes from
 
-Most names resolve through the mise registry. Two need an explicit backend
-because the bare name is ambiguous or unregistered:
+All of them are nixpkgs attributes except `workmux`, which is not packaged and
+so is a flake input (upstream ships its own flake):
 
-```toml
-"github:RivoLink/leaf" = "latest"
-"aqua:dalance/procs"  = "latest"
-```
-
-`opencode` is an npm package, so it declares the build it needs:
-
-```toml
-opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
+```nix
+workmux.url = "github:raine/workmux";
 ```
 
 ## Shell integration
@@ -82,8 +78,6 @@ export FZF_DEFAULT_OPTS="--color=…"   # Catppuccin Frappé colours for fzf
 export EDITOR=nvim
 export VISUAL=nvim
 
-eval "$(mise activate bash)"      # tools on PATH, per-directory versions
-eval "$(mise completion bash)"    # tab-completion for mise itself
 eval "$(starship init bash)"      # prompt
 eval "$(carapace _carapace bash)" # completions for other CLIs
 eval "$(atuin init bash)"         # Ctrl-R history search
@@ -92,10 +86,10 @@ eval "$(zoxide init bash)"        # z / zi
 zellij                            # auto-start the multiplexer
 ```
 
-The `mise activate`/`completion` lines use an explicit path
-(`$HOME/.local/bin/mise`, falling back to `mise` on `PATH`) because they run
-before mise is on `PATH` — a per-user install lives in `~/.local/bin`, the same
-place the Docker image puts it.
+`$HOME/.nix-profile/bin` is prepended near the top of the same file, and that
+one line is what replaced `mise activate`: the tools are in the profile
+home-manager maintains, and this file also runs on a machine where no switch has
+happened yet.
 
 ### jj prompt
 
@@ -168,8 +162,8 @@ opencode mcp list     # ✓ atuin connected · ✓ carapace connected
 Notes:
 
 - The commands are bare names, so they resolve through `PATH`: OpenCode must be
-  launched from a shell where `mise activate` has run (any interactive shell
-  started from this repo's `bashrc`).
+  launched from a shell whose `PATH` includes `~/.nix-profile/bin`, which this
+  repo's `bashrc` arranges.
 - `atuin_history` works against the local SQLite database with no extra setup;
   `atuin_output` / `atuin_output_search` additionally need Atuin's output
   capture (daemon + pty-proxy) running.
@@ -181,9 +175,9 @@ dust, eza, fd, fzf, gh, hunk, jj, jjui, jq, lazygit, leaf, neovim, node, pi,
 procs, ripgrep, starship, workmux, yazi, yq, zellij, zoxide). Two related cases
 worth knowing:
 
-- **mise itself** has one: `mise mcp` exposes project tools, tasks, env, and
-  config as MCP resources/tools over stdio. It is not wired up here — one entry
-  in `opencode/opencode.json` adds it if wanted.
+- **Nix itself** has no MCP server, but `nix-mcp` does if you want an agent to
+  evaluate expressions. Not wired up here — one entry in
+  `nix/configs/files/opencode/opencode.json` adds it if wanted.
 - **`pi`** (`pi mcp …`) and **`opencode`** (`opencode mcp add/list`) have `mcp`
   subcommands, but those *manage MCP clients* — they do not serve MCP.
 
@@ -196,7 +190,7 @@ follow the palette's [style guide](https://github.com/catppuccin/catppuccin/blob
 
 | Tool | Mechanism | Source |
 | ---- | --------- | ------ |
-| `bat` | vendored `Catppuccin Frappe.tmTheme` + `--theme="Catppuccin Frappe"` | `bat/config`, `bat/themes/` |
+| `bat` | vendored `Catppuccin Frappe.tmTheme` + `--theme="Catppuccin Frappe"` | `nix/configs/files/bat/` |
 | `eza` | native `theme.yml` (its own hex palette) | `eza/theme.yml` |
 | `fzf` | `--color=…` colourspec via `FZF_DEFAULT_OPTS` | `bashrc` |
 | `hunk` | built-in `catppuccin-frappe` theme | `hunk/config.toml` |
@@ -213,15 +207,16 @@ follow the palette's [style guide](https://github.com/catppuccin/catppuccin/blob
 
 Three notes:
 
-- **bat keeps a compiled theme cache.** After any change to `bat/themes/` (and on
-  a fresh machine after `mise dot apply`) run it once, or bat falls back to its
-  default theme:
+- **bat keeps a compiled theme cache.** After any change to
+  `nix/configs/files/bat/themes/` run it once, or bat falls back to its default
+  theme:
 
   ```sh
-  bat cache --build           # locally: mise exec -- bat cache --build
+  bat cache --build
   ```
 
-  The Docker image runs this at build time.
+  The devbox image does not need this: the theme is a file in the image rather
+  than something the build compiles.
 - **eza ignores its theme while `LS_COLORS` is set**, which the stock Ubuntu
   `~/.bashrc` sets from `dircolors` — hence the `unset LS_COLORS` line (that
   block is inherited from Ubuntu's default bashrc).
@@ -249,18 +244,24 @@ theme for fenced code blocks; it cannot load bat's `.tmTheme`, so it uses
 
 ## Adding or removing a tool
 
-1. Add/remove the entry in `[tools]` in `mise.toml` and in
-   `sandbox/dev/mise.toml` (keep it alphabetical in both).
-2. Run `mise install` (from the repo root).
+1. Add or remove the entry in `host` in
+   [`nix/lib/tools.nix`](../nix/lib/tools.nix) — alphabetical, and as an
+   attribute rather than a name, because five of them are not called what their
+   command is.
+2. `home-manager switch --flake .#"$(hostname -s)"`.
 
-```toml
-[tools]
-hyperfine = "latest"          # example: plain registry name
+```nix
+host = {
+  hyperfine = pkgs.hyperfine;   # example
+  # ...
+};
 ```
 
-To drop a tool: remove its line, then optionally `mise uninstall <tool>`.
+To drop a tool: remove its line and switch. The profile drops it.
+
+See [Usage § Add a tool](./usage.md#add-a-tool) for the pitfalls.
 
 ## Related documentation
 
-- [Usage](./usage.md) — dotfile workflow (`mise dot add/apply/status`).
+- [Usage](./usage.md) — editing config, adding a tool, upgrading.
 - [New machine](./new-machine.md) — fresh-machine setup and troubleshooting.

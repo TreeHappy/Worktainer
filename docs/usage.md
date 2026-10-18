@@ -1,152 +1,106 @@
 # Usage
 
-How to work with the dotfiles in this repo.
+How to change a config file, and how to change a tool.
 
-## How it works
+## Edit a config file
 
-The repo stores the **sources** in `dotfiles/`, and `mise.toml` at the repo
-root maps each target in `$HOME` to a source:
-
-```toml
-[dotfiles]
-"~/.bashrc" = { source = "dotfiles/bashrc" }
-"~/.config/zellij/config.kdl" = { source = "dotfiles/zellij/config.kdl" }
-```
-
-`mise dot apply` makes the target a symlink to the source. Relative sources
-resolve from the directory of the config file that declares them (the repo root
-here), so entries always deploy to the same absolute paths.
-
-The default mode is `symlink` (from `mise settings dotfiles.default_mode`), so:
-
-- Editing `~/.bashrc` edits `./bashrc` in the repo — they are the same file.
-  Content changes need **no** re-apply.
-- `mise dot apply` is only needed when targets are added/removed, or on a new
-  machine.
-
-## Everyday commands
+Config sources live in `nix/configs/files/`; the table in
+[`nix/lib/deploy.nix`](../nix/lib/deploy.nix) says where each one goes.
 
 ```sh
-cd /workspace              # mise.toml lives at the repo root
-
-mise dot status            # what is applied / differs / missing
-mise dot apply --dry-run   # preview changes without writing
-mise dot apply             # create or fix symlinks
-mise dot diff              # show differences for copy-mode entries
+cd ~/src/dotfiles
+$EDITOR nix/configs/files/zellij/config.kdl
+home-manager switch --flake .#"$(hostname -s)"
 ```
 
-Run them from anywhere with `mise -C /workspace dot <command>`.
-
-## Add a new dotfile
+Three commands, and it is the same three every time. Before switching:
 
 ```sh
-cd /workspace
-mise dot add --local --source dotfiles/<source> <target-in-home>
+home-manager diff  --flake .#"$(hostname -s)"   # what activation would change
+home-manager build --flake .#"$(hostname -s)"   # build the profile without activating
 ```
 
-For example, to start managing a Zellij layouts folder:
+**The files in `$HOME` are copies, not symlinks.** That is deliberate: a symlink
+into `/nix/store` is read-only, and `nvim ~/.config/zellij/config.kdl` has to
+work. The consequence is the one git already has about a tracked file — an edit
+in `$HOME` is not an edit to the source, and the switch will overwrite it. Edit
+the source, not the target.
+
+Files that a tool writes itself (`~/.config/yazi` additions, pi's `auth.json`,
+workmux's config when you cycle its dashboard theme) are yours, not the repo's,
+and a switch leaves them alone because they are not in the table.
+
+## Add a config file
+
+1. Put the file in `nix/configs/files/`, under the tool's folder if it has one
+   (`nix/configs/files/<tool>/<name>`).
+2. Add it to [`nix/configs/default.nix`](../nix/configs/default.nix) — one line,
+   `f "<tool>/<name>"`.
+3. Add the target to [`nix/lib/deploy.nix`](../nix/lib/deploy.nix) — the table is
+   `source -> path relative to $HOME`.
+4. Switch.
+
+The image picks it up for free: `nix/images/devbox.nix` deploys the same table,
+plus `imageOnly` for the files that must never reach a host.
+
+## Remove a config file
+
+Delete the source, both lines above it, and run a switch. If the file is the
+devbox's `sshd_config`, remember it is in `imageOnly`, not `targets`.
+
+## Add a tool
+
+Tools are nixpkgs attributes in
+[`nix/lib/tools.nix`](../nix/lib/tools.nix), as an **attrset**:
+
+```nix
+tools = {
+  ripgrep = ripgrep;
+  # ...
+};
+```
+
+Two things to know before you write one:
+
+- **Check the attribute name.** Five of the 27 are not what their command is
+  called — `jj` is `jujutsu`, `yq` is `yq-go`, `leaf` is
+  `leaf-markdown-viewer`, `pi` is `pi-coding-agent`, `node` is `nodejs_22`. A
+  name that looks right can be a different program entirely: nixpkgs' `jj` is a
+  JSON stream editor. Confirm against the package's `description` and
+  `homepage`, not its name.
+- **If it is not in nixpkgs**, it becomes a flake input rather than a package
+  (`workmux` is). `flake.lock` pins it either way.
+
+Adding a tool that should only be in the devbox image: put it in `image`, not
+`host` — see the `openbao` comment there.
+
+Then `home-manager switch`.
+
+## Upgrade a tool
 
 ```sh
-mise dot add --local --source dotfiles/zellij/layouts ~/.config/zellij/layouts
+nix flake update nixpkgs        # bumps every pinned version
+nix flake update nixpkgs home-manager
+home-manager switch --flake .#"$(hostname -s)"
 ```
 
-`mise dot add` moves the target into `dotfiles/`, writes the `[dotfiles]` entry
-to `mise.toml`, and applies it.
+The versions are in `flake.lock`, which is the point: `mise` had every tool on
+`latest` with no lock file, so an upgrade was whatever happened to be published
+that day.
 
-> Add the new entry to `sandbox/dev/mise.toml` too — the image uses that copy of
-> the config, so a source it does not list will not be deployed there.
+For the sandbox images, a version bump is a rebuild:
+`bin/sandbox build && systemctl --user restart sandbox-ingress`.
 
-Flags worth knowing:
-
-| Flag                  | Purpose                                                           |
-| --------------------- | ----------------------------------------------------------------- |
-| `--local`             | Write the entry to this repo's `mise.toml` (not the global config) |
-| `--source <path>`     | Where the source is stored, relative to the repo root (`dotfiles/…`) |
-| `--mode <mode>`       | `symlink` (default), `symlink-each`, `copy`, or `template`         |
-| `--dry-run`           | Preview without writing                                            |
-
-> Always pass `--local` in this repo. Without it, `mise dot add` writes to your
-> global config (`~/.config/mise/config.toml`), which is not versioned here.
-
-### Choosing a mode
-
-- `symlink` (default) — link a file or an entire directory into place.
-- `symlink-each` — link each file inside a source **directory** separately,
-  leaving the target a real directory. Use this when other tools write into the
-  same directory. Accepts `exclude`, `manifest`, `dot_prefix`, and `relative`.
-- `copy` — keep a real file at the target; useful when an app rewrites it.
-  Copy changes back to the repo with `mise dot add --changed`.
-- `template` — generate a machine-specific file from a template.
-
-### Deploy a whole directory
-
-`source` may be a directory, so one entry can cover a tree instead of one entry
-per file — the Yazi config in this repo does exactly that:
-
-```toml
-[dotfiles]
-"~/.config/yazi" = { source = "dotfiles/yazi", mode = "symlink-each" }
-```
-
-`mise dot apply` walks `yazi/` and links every file it finds. There is no glob
-in the **target** (targets are concrete paths); globs are used to filter the
-walk instead, via `exclude` (skipped) and `include` (tracked directories only):
-
-```toml
-"~/.config/yazi" = {
-  source = "dotfiles/yazi",
-  mode = "symlink-each",
-  exclude = ["*.md", ".git"],
-}
-```
-
-Patterns are relative to the entry's directory, `*` does not cross `/`, `**`
-does, and a pattern matching a directory covers everything beneath it. To deploy
-a whole tree but hand out only parts of it to a given machine, use
-[dotfile groups](https://mise.jdx.dev/dotfiles/groups.html)
-(`[dotfile_groups]`) instead of a plain entry.
-
-## Edit a dotfile
-
-Edit it directly (`$EDITOR ~/.bashrc`) and commit the change with jj — the
-symlink means the repo file is already updated:
+## Update the devbox image
 
 ```sh
-jj status
-jj commit -m "bashrc: add starship prompt"
+bin/sandbox build              # nix build + podman load, for all three images
+systemctl --user restart sandbox-devbox
 ```
 
-## Commit and push to GitHub (jj)
-
-This is a [Jujutsu](https://jj-vcs.dev/) repo colocated with Git, and `origin`
-points at the GitHub remote. jj has no branches of its own — the Git branch
-`main` is a **bookmark** that tracks its `main@origin` counterpart. The everyday
-loop is:
-
-```sh
-cd /workspace
-
-jj status                     # what changed in the working copy
-jj commit -m "docs: …"        # save the working copy as a commit, start a new one
-jj bookmark set main -r @-    # point main at the commit you just made
-jj git push --bookmark main   # push main (and its ancestors) to origin
-```
-
-After a push jj may warn that the working-copy commit became immutable; that is
-normal — it creates a fresh empty `@` to keep working in.
-
-For the rest — authenticating with `gh`, creating the repo, bookmark tracking,
-and recovering from rejected pushes — see **[Jujutsu and GitHub](./jj.md)**.
-
-## Remove a dotfile
-
-1. Delete its `[dotfiles]` entry from `mise.toml` and from
-   `sandbox/dev/mise.toml`.
-2. Remove the deployed link and, if you want, the source:
-
-```sh
-mise dot unapply ~/.bashrc     # removes the deployed target
-```
+A rebuild bakes a **new sshd host key** — expect the client to complain about a
+changed fingerprint and drop the stale `[127.0.0.1]:2222` line from
+`~/.ssh/known_hosts`.
 
 ## Shell history (atuin)
 
@@ -156,21 +110,22 @@ is kept in the SQLite database at `~/.local/share/atuin/history.db`, which is
 not tracked by this repo. The bash key binding (Ctrl-R) comes from
 `eval "$(atuin init bash)"` in the tracked `bashrc`.
 
-## Sharing history between machines (optional)
+To sync between machines, use `atuin login` — the shared history mise used to
+provide through `mise dot save`/`origin` is not part of this repo's setup, and
+nothing here depends on it.
 
-Beyond plain git commits, mise can snapshot and sync dotfile history:
+## Sandbox
+
+Covered in [Sandbox](./sandbox.md). The commands you will use most:
 
 ```sh
-mise dot save                                  # checkpoint current files
-mise dot origin set <repo-url> --sync sync     # connect a private git repo
+bin/sandbox up            # link, build, start everything
+bin/sandbox check         # acceptance checks
+bin/sandbox shell         # a shell in the devbox
+bin/sandbox logs egress   # follow one service
+bin/sandbox rules egress  # the ruleset the controller would install
+bin/sandbox down          # stop
 ```
 
-To save automatically on every edit, add this to the global config
-(`~/.config/mise/config.toml`) and run `mise bootstrap`:
-
-```toml
-[bootstrap.services.mise-history]
-builtin = "history-watch"
-```
-
-History commands (`save`, `history`, `rollback`) need `git` on `PATH`.
+After editing a unit in `sandbox/quadlet/`, `bin/sandbox link` and restart that
+one unit — no rebuild.

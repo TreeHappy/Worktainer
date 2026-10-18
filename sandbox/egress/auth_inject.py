@@ -11,7 +11,7 @@ script addon and redirects the devbox's outbound 443 to it. Secrets are read in
 a background thread, never on the request path: a slow or unanswering OpenBao
 must not add latency to (or fail) requests.
 
-Environment (defaults mirror compose.yaml):
+Environment (defaults mirror sandbox/quadlet/environments/egress.env):
 
   BAO_ADDR      OpenBao's address on the data network
   BAO_TOKEN     dev-mode root token

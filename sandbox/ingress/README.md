@@ -75,7 +75,8 @@ to come back here.
 
 ## Environment variables
 
-Defaults live in `entrypoint.sh` and mirror `compose.yaml`, which is where you
+Defaults live in `entrypoint.sh` and mirror [`environments/ingress.env`](../quadlet/environments/ingress.env),
+which is what the container actually reads and where you
 should edit them.
 
 | Variable | Default | Meaning |
@@ -110,7 +111,8 @@ podman exec sandbox-ingress nft list counters
 
 ## Adding a forward
 
-Add one line to `FORWARDS` in `compose.yaml` and a matching port under
+Add one line to `FORWARDS` in [`environments/ingress.env`](../quadlet/environments/ingress.env)
+and a matching port under
 `ports:`, then `bin/sandbox up`. The host port and the container port are the
 same number in this setup, but they do not have to be — the rule is rewritten
 from the entry itself.

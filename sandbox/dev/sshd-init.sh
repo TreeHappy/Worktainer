@@ -10,7 +10,7 @@
 # devbox boot. Changing the sandbox's keys is then an edit to the secret plus
 # a devbox restart, not a rebuild.
 #
-# Environment (defaults mirror compose.yaml):
+# Environment (defaults mirror sandbox/quadlet/environments/devbox.env):
 #   BAO_ADDR        http://10.89.1.20:8200    the OpenBao container
 #   BAO_TOKEN       sandbox-root-token        dev-mode root token
 #   SSH_KEYS_PATH   secret/devbox/authorized_keys

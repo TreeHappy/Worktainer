@@ -4,122 +4,136 @@ Set up a fresh machine from this repo.
 
 ## Prerequisites
 
-Install [mise](https://mise.jdx.dev/getting-started.html):
+### Nix
+
+The tools and the configuration come from Nix, so that is the one dependency
+that has to exist before anything else.
 
 ```sh
-curl https://mise.run | sh
+# see https://nixos.org/download — the single-user install is fine
+sh <(curl -L https://nixos.org/nix/install) --daemon
 ```
 
-## Install the dotfiles
+If your distribution already packages it (`apt install nix-bin`, `pacman -S
+nix`, …), skip that. Either way, you want the `nix` binary on `PATH` — the
+tracked `bashrc` adds `~/.nix-profile/bin` if it is not already there, and
+`nix profile install nixpkgs#git` or your distribution's package gets it there.
+
+Multi-user (`--daemon`) is needed if you want `home-manager` to install into a
+shared profile; the single-user install works for a personal machine.
+
+### Podman, for the sandbox only
+
+Podman and its rootless helpers need capabilities a per-user binary cannot set
+up, so they come from apt rather than from the toolchain:
+
+```sh
+sudo apt install podman uidmap passt
+```
+
+They are for the [sandbox](./sandbox.md) only. Without them the configuration
+works fine — it is a developer's environment, not a container runtime. Nix is
+*not* used for podman: rootless podman from nixpkgs drags in subuid handling and
+cgroup setup that is genuinely painful outside NixOS, and nothing here is
+blocked by keeping it on apt.
+
+## Install the configuration
 
 ```sh
 # Clone with jj (or `git clone`, which works on this colocated repo)
-jj git clone <repo-url> ~/src/dotfiles
-cd ~/src/dotfiles       # mise.toml lives at the repo root; sources under dotfiles/
+jj git clone <repo-url> ~/src/dandbox
+cd ~/src/dotfiles           # flake.nix lives at the repo root
 
-mise trust              # project configs are ignored until trusted
-mise install            # install the CLI tools from [tools]
-mise dot apply --dry-run # preview the symlinks
-mise dot apply          # deploy the dotfiles
-mise dot status         # confirm: "N entries up to date"
+cp nix/hosts/example.nix nix/hosts/"$(hostname -s)".nix
+$EDITOR nix/hosts/"$(hostname -s)".nix      # set `user`
+
+home-manager switch --flake .#"$(hostname -s)"
 ```
 
-The config sources live in `dotfiles/`, but `mise.toml` stays at the repo root
-so mise can discover it from anywhere in the checkout — run every command from
-the repo root.
+That installs the 27 tools into `~/.nix-profile`, puts them on `PATH`, and
+deploys every config file listed in `nix/lib/deploy.nix`.
 
-Deploying `bat/` is not enough on its own: bat caches themes in `~/.cache/bat`,
-so build the cache once after the dotfiles are in place:
+Two things that used to be separate steps and now are not:
+
+- **`git` is already there.** It is a nixpkgs attribute and part of the tool
+  set, because jj, jjui, lazygit and workmux all shell out to it.
+- **No bootstrap step.** `mise bootstrap` existed because mise could not
+  install per-user tools and apt packages in one go; home-manager does both.
+
+If you ever want to check what the switch *would* do:
 
 ```sh
-bat cache --build            # or: mise exec -- bat cache --build
+home-manager build --flake .#"$(hostname -s)"    # build the profile without activating it
+home-manager diff  --flake .#"$(hostname -s)"    # what activation would change
 ```
 
-The Docker image does this at build time.
+After the first switch, open a new shell. If the tools are not found, the
+tracked `bashrc` has not been reached yet — check that `~/.bashrc` is the one
+from this repo, and that it prepends `~/.nix-profile/bin` to `PATH`.
 
-Set nvim (installed via mise) as git's default editor:
+Set nvim as git's default editor if you like:
 
 ```sh
 git config --global core.editor nvim
 ```
 
-Activate mise in your shell (already done if you copied the tracked
-`~/.bashrc`), then open a new shell.
+## The sandbox
 
-## One-shot bootstrap
-
-`mise bootstrap` can chain the whole setup (repos, tools, dotfiles) in one
-command, run from the repo root:
+Nothing above is required for the sandbox; the sandbox is required for nothing
+above. To run it:
 
 ```sh
-mise bootstrap              # run the steps declared in the config
-mise bootstrap dotfiles     # only the dotfiles step
+bin/sandbox ca          # mint the sandbox CA (idempotent)
+bin/sandbox link        # link the quadlet units into ~/.config/containers/systemd
+bin/sandbox up          # build the images with nix, load them, start everything
+bin/sandbox check       # acceptance checks
 ```
 
-Adopting dotfiles straight from a remote repo:
+Requirements beyond the above:
 
-```sh
-mise bootstrap --adopt <user>/<repo>
-```
-
-### Bootstrap packages
-
-Not everything ships as a mise tool: podman, its compose front-end and the
-rootless networking helpers need capabilities a per-user binary cannot set up.
-They are declared in `[bootstrap.packages]` and installed with `apt` by the
-bootstrap step:
-
-```toml
-[bootstrap.packages]
-"apt:podman" = "latest"
-"apt:podman-compose" = "latest"
-"apt:uidmap" = "latest"
-"apt:passt" = "latest"
-```
-
-```sh
-mise bootstrap packages status     # what is installed
-mise bootstrap packages install    # force the apt install
-```
-
-These are for the [sandbox](./sandbox.md); without them the dotfiles still work
-fine.
+| Requirement | Why |
+| ----------- | --- |
+| cgroup v2 | Quadlet requires it: `podman info --format '{{.Host.CgroupsVersion}}'` should print `v2` |
+| a systemd user session | the units are user units; `systemctl --user` must work |
+| subuid/subgid | rootless podman: `podman info` should not complain about `newuidmap` |
 
 ## Notes and troubleshooting
 
 | Symptom | Cause / fix |
 | ------- | ----------- |
-| `mise dot status` shows nothing / `[dotfiles]` ignored | Run inside the repo, use `mise -C /workspace dot status`, and make sure it is trusted (`mise trust`). |
-| Symlink is broken, or status says `differs (symlink points to …)` | Re-run `mise dot apply` — it rewrites links to absolute paths. |
-| A tracked config turns back into a regular file, or edits stop reaching the repo | Some apps replace their config **atomically** (write temp + rename), which breaks the symlink. Re-run `mise dot apply`, or switch that entry to `mode = "copy"` and use `mise dot add --changed` to write edits back. Known cases: `opencode/cli.json`, `pi/settings.json`, and `workmux/config.yaml` (workmux rewrites it when you cycle the dashboard theme with `T`). |
-| A target is a regular file instead of a symlink | The entry exists but was not applied; run `mise dot apply`. |
-| `capture is unavailable: git not found` | Install git (it is not in the mise registry): `apt-get install -y git`. |
-| Editing a file does not change the repo | Check the mode; with `copy` mode run `mise dot add --changed`. |
-| `mise: command not found` in a new shell | Add `eval "$(mise activate bash)"` to `~/.bashrc` (this repo's `bashrc` already does). |
-| `bat` shows its default theme | The theme cache is stale or missing: run `bat cache --build`. |
-| Colours look washed out or 256-colour approximated in `pi`/`jjui`/`opencode`/`leaf` | The container does not advertise truecolour (`COLORTERM` unset, `TERM=xterm-256color`). `bashrc` exports `COLORTERM=truecolor`; make sure the shell sources this `bashrc` and the tool inherits it. |
+| `nix: command not found` in a new shell | The profile is not on `PATH`. The tracked `bashrc` adds `~/.nix-profile/bin`; make sure it is the one being sourced. Or `nix profile install nixpkgs#nix`. |
+| `home-manager: command not found` | It is a flake input, not a global: `nix run nixpkgs#home-manager -- switch --flake .#<host>`, or `nix profile install home-manager`. |
+| A tool in the repo is not on `PATH` | Check the attribute name in `nix/lib/tools.nix` — five of them are not what mise called them (`jj` is `jujutsu`, `yq` is `yq-go`, …). See [`nix/README.md`](../nix/README.md). |
+| An edit in `$HOME` does not reach the repo | Files are **copied**, not symlinked — a symlink into the read-only nix store could not be edited at all. Edit `nix/configs/files/<path>` and re-run `home-manager switch`. |
+| A file appears in `$HOME` that the repo does not have | Expected: tools write there (`ya pkg`, pi's `auth.json`, workmux rewriting its config). Those files are yours, not the repo's. |
+| `bat` shows its default theme | The theme cache is stale or missing: run `bat cache --build`. The devbox image no longer needs this — its theme is a file in the image, not a compile step. |
+| Colours look washed out or 256-colour approximated in `pi`/`jjui`/`opencode`/`leaf` | The terminal does not advertise truecolour (`COLORTERM` unset, `TERM=xterm-256color`). `bashrc` exports `COLORTERM=truecolor`; make sure the shell sources this `bashrc` and the tool inherits it. |
 | `eza` shows dircolors colours, not Catppuccin Frappé | `LS_COLORS` is overriding the theme — `bashrc` unsets it, so make sure your shell actually sources this `bashrc`. |
+| `workmux` rewrites `~/.config/workmux/config.yaml` and the repo is unchanged | Expected, and the reason config is copied rather than symlinked: workmux rewrites its own config when you cycle the dashboard theme. Put the change in `nix/configs/files/workmux/config.yaml` to make it stick. |
 
 ## What gets deployed where
 
-Sources are relative to `mise.toml` at the repo root, so each source reads
-`dotfiles/<path>`.
+One table, [`nix/lib/deploy.nix`](../nix/lib/deploy.nix), used by both the host
+and the devbox image:
 
-| Target                        | Source                        |
-| ----------------------------- | ----------------------------- |
-| `~/.bashrc`                   | `dotfiles/bashrc`             |
-| `~/.config/atuin/config.toml` | `dotfiles/atuin/config.toml`  |
-| `~/.config/bat` (`symlink-each`) | `dotfiles/bat`             |
-| `~/.config/eza/theme.yml`     | `dotfiles/eza/theme.yml`      |
-| `~/.config/hunk/config.toml`  | `dotfiles/hunk/config.toml`   |
-| `~/.config/jjui` (`symlink-each`) | `dotfiles/jjui`           |
-| `~/.config/lazygit/config.yml` | `dotfiles/lazygit/config.yml` |
-| `~/.config/leaf` (`symlink-each`) | `dotfiles/leaf`           |
-| `~/.config/opencode/cli.json` | `dotfiles/opencode/cli.json`  |
-| `~/.config/opencode/opencode.json` | `dotfiles/opencode/opencode.json` |
-| `~/.config/procs/config.toml` | `dotfiles/procs/config.toml`  |
-| `~/.config/starship.toml`     | `dotfiles/starship.toml`      |
-| `~/.config/workmux/config.yaml` | `dotfiles/workmux/config.yaml` |
-| `~/.config/yazi` (`symlink-each`) | `dotfiles/yazi`           |
-| `~/.config/zellij/config.kdl` | `dotfiles/zellij/config.kdl`  |
-| `~/.pi/agent` (`symlink-each`) | `dotfiles/pi`                |
+| Target                        | Source                          |
+| ----------------------------- | ------------------------------- |
+| `~/.bashrc`                   | `nix/configs/files/bashrc`      |
+| `~/.config/atuin/config.toml` | `nix/configs/files/atuin/config.toml` |
+| `~/.config/bat/…`             | `nix/configs/files/bat/…`       |
+| `~/.config/eza/theme.yml`     | `nix/configs/files/eza/theme.yml` |
+| `~/.config/hunk/config.toml`  | `nix/configs/files/hunk/config.toml` |
+| `~/.config/jjui/…`            | `nix/configs/files/jjui/…`      |
+| `~/.config/lazygit/config.yml` | `nix/configs/files/lazygit/config.yml` |
+| `~/.config/leaf/…`            | `nix/configs/files/leaf/…`      |
+| `~/.config/opencode/cli.json` | `nix/configs/files/opencode/cli.json` |
+| `~/.config/opencode/opencode.json` | `nix/configs/files/opencode/opencode.json` |
+| `~/.config/procs/config.toml` | `nix/configs/files/procs/config.toml` |
+| `~/.config/starship.toml`     | `nix/configs/files/starship.toml` |
+| `~/.config/workmux/config.yaml` | `nix/configs/files/workmux/config.yaml` |
+| `~/.config/yazi/…`            | `nix/configs/files/yazi/…`      |
+| `~/.config/zellij/config.kdl` | `nix/configs/files/zellij/config.kdl` |
+| `~/.pi/agent/…`               | `nix/configs/files/pi/…`        |
+
+`nix/configs/files/sshd/sshd_config` is the exception: it is deployed into the
+devbox **image** only, and the host table deliberately omits it.

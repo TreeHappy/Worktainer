@@ -25,7 +25,8 @@ throwaway sandbox wants and what nothing else does:
   boot, so a wiped server and a restarted devbox mean "no keys, nobody gets
   in" — the safe direction to fail in.
 - **One root token, printed nowhere.** `BAO_DEV_ROOT_TOKEN_ID` pins it to
-  `sandbox-root-token` (compose.yaml) so the clients and the docs can hardcode
+  `sandbox-root-token` ([`environments/openbao.env`](../quadlet/environments/openbao.env))
+  so the clients and the docs can hardcode
   it; the upstream `-dev-no-store-token` keeps it out of the container's
   filesystem.
 - **Plain HTTP, no seal, no policies, no audit device.** Nothing is encrypted
@@ -33,7 +34,8 @@ throwaway sandbox wants and what nothing else does:
   write is logged nowhere. That is fine for a port published on loopback and a
   database that lives in memory; it is not a vault for anything you care about.
 
-**The token is in compose.yaml**, so anything that can read the repo can read
+**The token is in `sandbox/quadlet/environments/openbao.env`**, so anything that
+can read the repo can read
 and rewrite every secret. That is a deliberate trade: the sandbox models *egress
 shaping*, not defense against you. Do not put a real credential in here — put a
 credential scoped to a throwaway key, and rotate it like one.
@@ -142,9 +144,9 @@ with a token nobody has:
 
 | Where | Key |
 | ----- | --- |
-| `compose.yaml`, `openbao` service | `BAO_DEV_ROOT_TOKEN_ID` |
-| `compose.yaml`, `devbox` service | `BAO_TOKEN` |
-| `compose.yaml`, `egress` service | `BAO_TOKEN` |
+| `environments/openbao.env` | `BAO_DEV_ROOT_TOKEN_ID` |
+| `environments/devbox.env` | `BAO_TOKEN` |
+| `environments/egress.env` | `BAO_TOKEN` |
 
 Then `bin/sandbox up`. The token is not what protects anything here — the file
 is readable by anyone with the repo — it only stops anonymous writes.

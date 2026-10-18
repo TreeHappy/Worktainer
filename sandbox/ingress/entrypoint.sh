@@ -3,24 +3,28 @@
 #
 # The container is the only way into the sandbox from the host:
 #
-#   1. the host ports published in compose.yaml are terminated here;
+#   1. the host ports published in sandbox-ingress.container are terminated
+#      here;
 #   2. nftables DNATs each of them to its backend on the data or control
 #      network (the devbox, or a telemetry web UI);
 #   3. the devbox-facing link is shaped with tc (tbf + netem);
 #   4. a counter of everything forwarded is exported as OTel spans.
 #
-# All of it is driven by environment variables (see compose.yaml for values).
+# All of it is driven by environment variables (see
+# sandbox/quadlet/environments/ingress.env for the values).
 # Set DRY_RUN=1 to print the nftables ruleset it would install and exit —
 # no side effects, so it can be run outside a container.
 set -eu
 
 # --------------------------------------------------------------------------
-# Configuration (defaults mirror compose.yaml)
+# Configuration (the defaults here mirror environments/ingress.env, which is
+# what the container actually gets)
 # --------------------------------------------------------------------------
 : "${CTRL_IP:=10.89.0.3}"          # this container's control-plane address
 : "${DATA_IP:=10.89.1.3}"          # this container's data-plane address
-# host-port:target-ip:target-port. Mirrors compose.yaml, which sets the same
-# list explicitly so the port map is visible next to the published ports.
+# host-port:target-ip:target-port. environments/ingress.env sets the same
+# list explicitly so the port map is visible next to the published ports in
+# sandbox-ingress.container.
 # The devbox pair points at the sshd built into the image (port 2222 inside
 # the devbox; an unprivileged sshd cannot bind 22); 8200 is OpenBao's API/UI.
 FORWARDS_DEFAULT="2222:10.89.1.10:2222 8080:10.89.1.10:8080 8200:10.89.1.20:8200 9419:10.89.0.20:80 9420:10.89.0.21:8000 9421:10.89.0.22:4319"

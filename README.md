@@ -1,93 +1,100 @@
 # Worktainer
 
-A containerized, [mise](https://mise.jdx.dev/)-managed work environment: an
-Ubuntu dev-container image plus the dotfiles that turn it — or any fresh
-machine — into a consistent shell.
+A containerized, [Nix](https://nixos.org/)-managed work environment: a dev
+container built entirely from a lockfile, plus the configuration that turns it —
+or any fresh machine — into a consistent shell.
 
 It doubles as a **sandbox for AI agents**: the same devbox, but with its
 network behind two controllers that decide what it can reach and three
 telemetry backends that watch the boundary. See
 **[Sandbox](./docs/sandbox.md)**.
 
-Everything — the CLI tools, the config files, and the few system packages mise
-cannot install per-user — is declared in `mise.toml` at the repo root, and the
-config sources it deploys live together in `dotfiles/`:
+Everything — the CLI tools, the config files, and the images themselves — is
+declared in `flake.nix` at the repo root, and the config sources they deploy
+live together in `nix/configs/files/`:
 
-- `[tools]` — installs the CLI tools (carapace, starship, atuin, zellij,
-  neovim, node, jj, lazygit, workmux, yazi, …) into `~/.local/share/mise`, as
-  prebuilt binaries, no `sudo`.
-- `[dotfiles]` — deploys the tracked configs in `dotfiles/` into `$HOME` as symlinks.
-- `[bootstrap.packages]` — a handful of apt packages (podman and its rootless
-  helpers, for the sandbox).
+- [`nix/lib/tools.nix`](./nix/lib/tools.nix) — the 27 CLI tools (carapace,
+  starship, atuin, zellij, neovim, node, jj, lazygit, workmux, yazi, …) as
+  pinned nixpkgs attributes, no `sudo`.
+- [`nix/lib/deploy.nix`](./nix/lib/deploy.nix) — where each config file goes in
+  `$HOME`. One table, used by the host and by the image.
+- `nix/images/` — the three images this repo owns, as nix derivations.
+- `nix/hosts/<hostname>.nix` — one small file per machine: the username, and
+  nothing else.
 
 So a new machine reproduces the whole environment with:
 
 ```sh
-cd /workspace    # mise.toml lives at the repo root
-mise install     # install the CLI tools
-mise dot apply   # deploy the dotfiles into $HOME
-mise bootstrap   # the apt packages in [bootstrap.packages]
+cd /workspace            # flake.nix lives at the repo root
+cp nix/hosts/example.nix nix/hosts/"$(hostname -s)".nix
+$EDITOR nix/hosts/"$(hostname -s)".nix          # set `user`
+home-manager switch --flake .#"$(hostname -s)"
 ```
 
-The sources in `dotfiles/` are shared by the container image, a fresh machine,
-and a VM host later. The image carries its own copy of the manifest at
-`sandbox/dev/mise.toml` (same `[tools]` and `[dotfiles]`, no
-`[bootstrap.packages]`).
+The sources in `nix/configs/files/` are shared by the devbox image, a fresh
+machine, and a VM host later — which is the property that made `dotfiles/` worth
+having in the first place, now expressed as a nix table instead of a TOML one.
 
 ## Container quick start
 
 ```sh
-docker build -f sandbox/dev/Dockerfile -t worktainer .   # from the repo root
-docker run -it worktainer
+nix build .#sandbox-devbox      # a podman-loadable tarball
+podman load < result
+podman run -it localhost/sandbox-devbox:latest
 ```
 
-The image builds everything as an unprivileged `dev` user (uid 1000, no `sudo`)
-that owns the mise toolchain and the dotfiles checkout: it installs mise, runs
-`mise install && mise dot apply` (plus `bat cache --build`), and drops you into
-bash with zellij auto-started.
+The image is a nix closure: every package comes from `flake.lock`, the config
+comes from `nix/configs/files/`, and it runs as an unprivileged `dev` user
+(uid 1000, no `sudo`) in bash with zellij auto-started. It ships nothing else —
+no `docs/`, no `.git`, no other sandbox services — because there is no build
+context to filter; the store only ever holds what the derivation names.
 
-The build context is the repository root, and the image's only `COPY`s take
-`dotfiles/` (the real sources, so there are no copies to refresh) and
-`sandbox/dev/mise.toml` (the container's config). It still ships nothing else:
-no `docs/`, no `.git`, no other sandbox services (`.dockerignore` and the
-selective `COPY` keep it that way).
+It still carries no sshd keys: who may log in is decided by the sandbox's
+OpenBao, not by the image. See
+[`sandbox/dev/README.md`](./sandbox/dev/README.md).
 
 ## Layout
 
 ```
-dotfiles/               every config source (the manifest lives at the repo root)
-  bashrc                -> ~/.bashrc (aliases, fzf colours, mise/starship/… init)
-  atuin/config.toml     -> ~/.config/atuin/config.toml
-  bat/                  -> ~/.config/bat (config + vendored Catppuccin Frappé theme)
-  eza/theme.yml         -> ~/.config/eza/theme.yml (Catppuccin Frappé)
-  hunk/config.toml      -> ~/.config/hunk/config.toml (Catppuccin Frappé)
-  jjui/                 -> ~/.config/jjui (config + Catppuccin Frappé theme)
-  lazygit/config.yml    -> ~/.config/lazygit/config.yml (Catppuccin Frappé)
-  leaf/                 -> ~/.config/leaf (config + Catppuccin Frappé theme)
-  opencode/opencode.json -> ~/.config/opencode/opencode.json (MCP servers)
-  opencode/cli.json     -> ~/.config/opencode/cli.json (TUI settings)
-  pi/                   -> ~/.pi/agent (settings + vendored Catppuccin Frappé theme)
-  procs/config.toml     -> ~/.config/procs/config.toml (Catppuccin Frappé)
-  starship.toml         -> ~/.config/starship.toml (Catppuccin Frappé palette)
-  workmux/config.yaml   -> ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
-  yazi/                 -> ~/.config/yazi (vendored Catppuccin Frappé flavor)
-  zellij/config.kdl     -> ~/.config/zellij/config.kdl
-mise.toml               host config: [tools] + [dotfiles] + [bootstrap.packages]
-sandbox/                the multi-container sandbox (devbox + controllers + telemetry)
-sandbox/dev/Dockerfile  the devbox image (was the root Dockerfile)
-sandbox/dev/mise.toml   container config: [tools] + [dotfiles]
-docs/                   documentation
+flake.nix                    the tools, the images, and one homeConfiguration per host
+nix/configs/files/           every config source
+  bashrc                     -> ~/.bashrc (aliases, fzf colours, starship/… init)
+  atuin/config.toml          -> ~/.config/atuin/config.toml
+  bat/                       -> ~/.config/bat (config + vendored Catppuccin Frappé theme)
+  eza/theme.yml              -> ~/.config/eza/theme.yml (Catppuccin Frappé)
+  hunk/config.toml           -> ~/.config/hunk/config.toml (Catppuccin Frappé)
+  jjui/                      -> ~/.config/jjui (config + Catppuccin Frappé theme)
+  lazygit/config.yml         -> ~/.config/lazygit/config.yml (Catppuccin Frappé)
+  leaf/                      -> ~/.config/leaf (config + Catppuccin Frappé theme)
+  opencode/opencode.json     -> ~/.config/opencode/opencode.json (MCP servers)
+  opencode/cli.json          -> ~/.config/opencode/cli.json (TUI settings)
+  pi/                        -> ~/.pi/agent (settings + vendored Catppuccin Frappé theme)
+  procs/config.toml          -> ~/.config/procs/config.toml (Catppuccin Frappé)
+  starship.toml              -> ~/.config/starship.toml (Catppuccin Frappé palette)
+  workmux/config.yaml        -> ~/.config/workmux/config.yaml (Catppuccin Frappé dashboard)
+  yazi/                      -> ~/.config/yazi (vendored Catppuccin Frappé flavor)
+  zellij/config.kdl          -> ~/.config/zellij/config.kdl
+  sshd/sshd_config           the devbox's sshd (image only, never a host)
+nix/lib/                     tools.nix, deploy.nix, image.nix
+nix/modules/host.nix         the home-manager module
+nix/hosts/                   one file per machine
+nix/images/                  ingress, egress, devbox — as nix derivations
+sandbox/                     the multi-container sandbox (devbox + controllers + telemetry)
+sandbox/quadlet/             its systemd units, and the env files they share
+sandbox/dev/devbox-init.sh   container start: trust the CA, then sshd
+docs/                        documentation
 ```
 
 ## Documentation
 
-- [Usage](./docs/usage.md) — add, edit, and remove dotfiles; daily workflow.
+- [Usage](./docs/usage.md) — edit config, add a tool, upgrade; daily workflow.
 - [Jujutsu and GitHub](./docs/jj.md) — jj concepts, `gh` auth/repo setup, and pushing.
-- [Tools](./docs/tools.md) — every CLI tool in `[tools]` and how it is wired up.
+- [Tools](./docs/tools.md) — every CLI tool and how it is wired up.
 - [New machine](./docs/new-machine.md) — fresh-machine setup and troubleshooting.
 - [Sandbox](./docs/sandbox.md) — the devbox behind controllers; telemetry backends.
 - [Worktainer and OpenSandbox](./docs/comparison-opensandbox.md) — this sandbox compared with the OpenSandbox platform.
 - [Docs index](./docs/README.md) — overview, layout, and conventions.
+- [Nix layer](./nix/README.md) — the tool mapping, the images, and why the devbox is built the way it is.
 
 ## Version control
 

@@ -128,8 +128,8 @@ cd ~/src/dotfiles
 jj git init --colocate
 ```
 
-After cloning, run the steps in [New machine](./new-machine.md) to install the
-tools and deploy the dotfiles.
+After cloning, run the steps in [New machine](./new-machine.md) to create your
+host file and switch the profile.
 
 ## Reference
 
