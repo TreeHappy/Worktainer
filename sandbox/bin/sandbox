@@ -4,9 +4,10 @@
 # Usage: sandbox <command> [args]
 #
 #   networks up|down   create/remove the three networks (needed before `up`)
+#   ca                 create the sandbox CA (sandbox/ca/) if it is missing
 #   config             render and validate the compose file
 #   build              build the images
-#   up                 networks up + build + start everything (detached)
+#   up                 networks up + ca + build + start everything (detached)
 #   down               stop and remove the containers (keeps the networks)
 #   clean              down + remove volumes, images and networks
 #   ps                 list the sandbox containers
@@ -34,6 +35,33 @@ compose_cmd() {
     podman-compose -p "$project" -f "$compose" "$@"
 }
 
+# The root certificate the sandbox signs with: the egress's proxy uses the key
+# for the TLS it intercepts, and the devbox image has the certificate baked into
+# its trust store. Generated per machine and never committed (sandbox/ca/ is in
+# .gitignore), so both images read it from the build context — which means a
+# build on a fresh checkout needs one. See ca/README.md and egress/README.md.
+ca_crt=$sandbox/ca/sandbox-ca.crt
+ca_key=$sandbox/ca/sandbox-ca.key
+
+ensure_ca() {
+    if [ -f "$ca_crt" ] && [ -f "$ca_key" ]; then
+        return 0
+    fi
+    mkdir -p "$sandbox/ca"
+    # An EC P-256 root: signing is cheap, and nothing here cares about the
+    # algorithm beyond it being a certificate a TLS stack will accept.
+    openssl req -x509 -newkey ec \
+        -pkeyopt ec_paramgen_curve:prime256v1 -nodes -sha256 -days 3650 \
+        -keyout "$ca_key" -out "$ca_crt" \
+        -subj "/O=sandbox/CN=sandbox-ca" \
+        -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
+        -addext "keyUsage=critical,keyCertSign,cRLSign" \
+        -addext "subjectKeyIdentifier=hash" >/dev/null
+    chmod 600 "$ca_key"
+    chmod 644 "$ca_crt"
+    printf 'ca: created %s\n' "$ca_crt"
+}
+
 usage() {
     cat <<EOF
 sandbox - a devbox that can only reach the network through its controllers
@@ -41,9 +69,10 @@ sandbox - a devbox that can only reach the network through its controllers
 Usage: $(basename "$0") <command> [args]
 
   networks up|down   create/remove the three networks (needed before \`up\`)
+  ca                 create the sandbox CA (sandbox/ca/) if it is missing
   config             render and validate the compose file
   build              build the images
-  up                 networks up + build + start everything (detached)
+  up                 networks up + ca + build + start everything (detached)
   down               stop and remove the containers (keeps the networks)
   clean              down + remove volumes, images and networks
   ps                 list the sandbox containers
@@ -63,14 +92,25 @@ networks)
     shift
     exec "$here/networks" "$@"
     ;;
+ca)
+    if [ -f "$ca_crt" ] && [ -f "$ca_key" ]; then
+        printf 'ca: %s already exists, keeping it (delete both to regenerate)\n' \
+            "$ca_crt"
+    else
+        ensure_ca
+    fi
+    openssl x509 -in "$ca_crt" -noout -subject -fingerprint -sha256
+    ;;
 config)
     compose_cmd config
     ;;
 build)
+    ensure_ca
     compose_cmd build
     ;;
 up)
     "$here/networks" up
+    ensure_ca
     compose_cmd build
     compose_cmd up -d
     compose_cmd ps

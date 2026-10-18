@@ -10,17 +10,19 @@ The image builds from the repository root, not from this folder:
 
 ```mermaid
 flowchart LR
-    DOT["repo root<br/>dotfiles/ + sandbox/dev/mise.toml"] -->|"podman build -f sandbox/dev/Dockerfile ."| IMG["localhost/sandbox-devbox:latest"]
+    DOT["repo root<br/>dotfiles/ + sandbox/dev/mise.toml<br/>+ sshd-init.sh + sandbox/ca/"] -->|"podman build -f sandbox/dev/Dockerfile ."| IMG["localhost/sandbox-devbox:latest"]
     IMG --> BOX["sandbox-devbox<br/>10.89.1.10"]
 ```
 
-The Dockerfile's two `COPY`s take `dotfiles/` (the single folder holding every
-config source) and `sandbox/dev/mise.toml` (the container's config), placing
-them at the checkout root inside the image — `mise.toml` with the sources under
-`dotfiles/`, mirroring the repo. There `mise trust && mise install && mise dot
-apply` runs. Because nothing is mirrored, an edit to a dotfile is picked up by
-the next build with no sync step, and the image still contains no `docs/`, no
-`.git`, and none of the rest of the sandbox.
+The Dockerfile copies four things from the context: `dotfiles/` (the single
+folder holding every config source) and `sandbox/dev/mise.toml` (the
+container's config), placed at the checkout root inside the image so `mise.toml`
+sits with the sources under `dotfiles/` and mirrors the repo; then
+`sandbox/dev/sshd-init.sh`, the boot helper the sshd starts through; and
+`sandbox/ca/`, the sandbox CA (below). There `mise trust && mise install && mise
+dot apply` runs. Because nothing is mirrored, an edit to a dotfile is picked up
+by the next build with no sync step, and the image still contains no `docs/`,
+no `.git`, and none of the rest of the sandbox.
 
 ## Building it
 
@@ -28,6 +30,26 @@ the next build with no sync step, and the image still contains no `docs/`, no
 bin/sandbox build                                             # compose build (context = repo root)
 podman build -f sandbox/dev/Dockerfile -t worktainer .        # standalone, from the repo root
 ```
+
+## The CA it trusts
+
+The image ends with the sandbox CA in its system trust store. That CA is what
+the egress's proxy signs the TLS it intercepts with, so the devbox can inspect
+outbound `https://` — see [`../egress/README.md`](../egress/README.md) for what
+that buys and what it costs.
+
+```sh
+bin/sandbox ca                        # writes sandbox/ca/ (never committed)
+bin/sandbox build                     # rebuilds with it baked in
+```
+
+`bin/sandbox ca` creates the pair on first use (both `build` and `up` call it),
+so there is nothing to run before a build. Rotating it means deleting both
+files, running `bin/sandbox ca`, rebuilding **and** restarting the egress — and
+every `https://` call from a devbox built against the old certificate fails until
+the image is rebuilt. Node and Python are pointed at the system bundle
+explicitly (`NODE_EXTRA_CA_CERTS`, `REQUESTS_CA_BUNDLE` in compose.yaml):
+neither reads the system trust store on its own.
 
 ## SSH into the devbox
 

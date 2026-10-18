@@ -50,6 +50,7 @@ mise.toml                host config: [tools] + [dotfiles] + [bootstrap.packages
 sandbox/                 a multi-container sandbox: devbox + ingress/egress + telemetry + openbao
 sandbox/dev/mise.toml    container config: [tools] + [dotfiles]
 sandbox/openbao/         the sandbox's secrets server (OpenBao in dev mode)
+sandbox/ca/              the sandbox's CA (generated per machine, never committed)
 docs/                    this documentation
 ```
 

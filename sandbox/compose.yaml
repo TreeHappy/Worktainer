@@ -161,6 +161,13 @@ services:
     environment:
       BAO_ADDR: http://10.89.1.20:8200
       BAO_TOKEN: sandbox-root-token
+      # The egress's proxy signs what it intercepts with the sandbox CA, which
+      # this image has in its system trust store — but only its system store:
+      # Node ships its own roots instead of reading it, and Python's requests
+      # uses certifi. Both are pointed back at the system bundle, which holds
+      # the public roots plus the sandbox CA.
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
     # DNS is served by the egress container, so lookups cross the boundary.
     dns:
       - 10.89.1.2

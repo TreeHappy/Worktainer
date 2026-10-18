@@ -1,0 +1,5 @@
+# The sandbox CA (sandbox/ca/) is generated per machine by `bin/sandbox ca`:
+# the private key must never reach the repo, and the certificate is useless
+# elsewhere. The folder's README is tracked — only the material is not.
+sandbox/ca/*.crt
+sandbox/ca/*.key
