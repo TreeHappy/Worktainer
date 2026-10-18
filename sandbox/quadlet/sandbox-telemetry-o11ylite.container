@@ -7,13 +7,27 @@
 # They live only on the control network — nobody on the data network can reach
 # them, which is the other half of what makes ctrl a control plane. Their web
 # UIs come in through the ingress on 9419.
+#
+# All three telemetry images are upstream and pulled, not built here (see
+# nix/README.md), so they are pinned by digest.
+
+# Pinned by digest, not by tag (audit S3). These four are upstream images: this
+# repo does not build them, so `:latest` meant a `bin/sandbox up` months from now
+# could pull different code than the stack was designed against, with no signal.
+#
+# To move one on purpose, resolve the digest for `:latest` and replace it:
+#
+#   docker buildx imagetools inspect <repo>:latest | grep Digest
+#   podman pull <repo>:latest && podman inspect --format '{{.Digest}}' <repo>:latest
+#
+# The three nix-built images need no digests: their content *is* the lockfile.
 
 [Unit]
 Description=sandbox telemetry: o11ylite
 
 [Container]
 ContainerName=sandbox-telemetry-o11ylite
-Image=localhost/sandbox-telemetry-o11ylite:latest
+Image=ghcr.io/o11ylite/o11ylite@sha256:41377fd6dbc1ec7a48aa36ac37bb31e788611d35faf3cbb3f058d79af2025c7e
 HostName=telemetry-o11ylite
 
 Network=sandbox-ctrl.network:ip=10.89.0.20

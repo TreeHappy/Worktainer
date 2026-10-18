@@ -10,12 +10,23 @@
 #
 # The image is upstream and pulled rather than built here — see nix/README.md.
 
+# Pinned by digest, not by tag (audit S3). These four are upstream images: this
+# repo does not build them, so `:latest` meant a `bin/sandbox up` months from now
+# could pull different code than the stack was designed against, with no signal.
+#
+# To move one on purpose, resolve the digest for `:latest` and replace it:
+#
+#   docker buildx imagetools inspect <repo>:latest | grep Digest
+#   podman pull <repo>:latest && podman inspect --format '{{.Digest}}' <repo>:latest
+#
+# The three nix-built images need no digests: their content *is* the lockfile.
+
 [Unit]
 Description=sandbox telemetry: otel-desktop-viewer
 
 [Container]
 ContainerName=sandbox-telemetry-otel-desktop-viewer
-Image=localhost/sandbox-telemetry-otel-desktop-viewer:latest
+Image=ghcr.io/ctrlspice/otel-desktop-viewer@sha256:fdf589a6f4a670994670ca0515a649f442ebc4b36f09f4d5bb03668f61eed517
 HostName=telemetry-otel-desktop-viewer
 
 Network=sandbox-ctrl.network:ip=10.89.0.21

@@ -4,12 +4,23 @@
 #
 # The image is upstream and pulled rather than built here — see nix/README.md.
 
+# Pinned by digest, not by tag (audit S3). These four are upstream images: this
+# repo does not build them, so `:latest` meant a `bin/sandbox up` months from now
+# could pull different code than the stack was designed against, with no signal.
+#
+# To move one on purpose, resolve the digest for `:latest` and replace it:
+#
+#   docker buildx imagetools inspect <repo>:latest | grep Digest
+#   podman pull <repo>:latest && podman inspect --format '{{.Digest}}' <repo>:latest
+#
+# The three nix-built images need no digests: their content *is* the lockfile.
+
 [Unit]
 Description=sandbox telemetry: otelop
 
 [Container]
 ContainerName=sandbox-telemetry-otelop
-Image=localhost/sandbox-telemetry-otelop:latest
+Image=ghcr.io/mashiro/otelop@sha256:c531bfa30b83793902ced6df381e55905809c6dbb025fc15f0c2e6775db01b25
 HostName=telemetry-otelop
 
 Network=sandbox-ctrl.network:ip=10.89.0.22

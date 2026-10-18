@@ -135,8 +135,11 @@ in it changed for the move: `mise activate` became a `PATH` prepend for
 
 ## Images
 
-Three of seven move. The other four are upstream images pinned to `:latest` and
-stay as they are — `openbao`, `o11ylite`, `otel-desktop-viewer`, `otelop`. They
+Three of seven move. The other four are upstream images and stay as they are —
+`openbao`, `o11ylite`, `otel-desktop-viewer`, `otelop` — pinned **by digest**
+in their unit files rather than by `:latest`, so a `bin/sandbox up` months from
+now cannot pull different code than the stack was designed against (audit S3).
+They
 sit on the `ctrl` network behind the ingress and are not part of the trust
 boundary, so this is a scope boundary rather than an oversight. Say so in the
 docs so it does not read as a bug later.
@@ -185,6 +188,7 @@ at *build* time in a builder, which is exactly when they should.
 | S4 — every tool pinned to `latest` | `flake.lock` |
 | S2 — CA private key in the devbox image | the CA is never named from nix, so it cannot enter the store |
 | S6 — the devbox image did not build | `update-ca-certificates` ran as uid 1000 with no guard; it is gone |
+| S3 — four upstream images on `:latest` | pinned by digest in `sandbox/quadlet/*.container` |
 | no capability drops, no resource limits | Quadlet keys, folded in while the units were written |
 
 S2 is worth spelling out because the obvious fix is the wrong one. `.dockerignore`

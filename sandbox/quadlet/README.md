@@ -28,7 +28,11 @@ are not obvious from a file, and what has not been tested.
 | `environments/*.env` | one env file per service, read by the unit and by `bin/sandbox rules` |
 
 `Image=` for the three images nix builds, by the tags `bin/sandbox build`
-loads. The other four containers are upstream images, pulled by podman.
+loads — a tag is enough there, because the content *is* the lockfile. The other
+four containers are upstream images, and they are pinned **by digest**: a tag
+would let a `bin/sandbox up` months from now pull different code than the stack
+was designed against, with no signal (audit S3). Each unit says how to move its
+digest on purpose.
 
 ## Four things that are not obvious
 

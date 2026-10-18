@@ -4,9 +4,20 @@
 # and pulled rather than built here — see nix/README.md — so this is Image= and
 # not a nix output.
 #
-# Dev mode, in-memory, one root token. Only its own clients read it, and only
-# through a token scoped to one path each (audit S1). sandbox/openbao/README.md
-# has the layout and the recipes.
+# Dev mode, in-memory, one root token used only to bootstrap two scoped ones.
+# Neither client sees the root token (audit S1). sandbox/openbao/README.md has
+# the layout and the recipes.
+
+# Pinned by digest, not by tag (audit S3). These four are upstream images: this
+# repo does not build them, so `:latest` meant a `bin/sandbox up` months from now
+# could pull different code than the stack was designed against, with no signal.
+#
+# To move one on purpose, resolve the digest for `:latest` and replace it:
+#
+#   docker buildx imagetools inspect <repo>:latest | grep Digest
+#   podman pull <repo>:latest && podman inspect --format '{{.Digest}}' <repo>:latest
+#
+# The three nix-built images need no digests: their content *is* the lockfile.
 
 [Unit]
 Description=sandbox secrets server
@@ -17,7 +28,7 @@ Before=sandbox-egress.service
 
 [Container]
 ContainerName=sandbox-openbao
-Image=docker.io/openbao/openbao:latest
+Image=docker.io/openbao/openbao@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf
 HostName=openbao
 
 # On the data network, which the devbox is also on, because sshd-init has to
