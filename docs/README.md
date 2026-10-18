@@ -117,3 +117,4 @@ mise dot status       # confirm everything is applied
 - [Tools](./tools.md) — every CLI tool in `[tools]` and how it is wired up.
 - [New machine](./new-machine.md) — set up a fresh machine and troubleshooting.
 - [Sandbox](./sandbox.md) — the devbox behind controllers: the only way in, the only way out, and three telemetry backends.
+- [Worktainer and OpenSandbox](./comparison-opensandbox.md) — how this sandbox compares to the OpenSandbox platform, and what is worth taking from it.

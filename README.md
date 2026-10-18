@@ -86,6 +86,7 @@ docs/                   documentation
 - [Tools](./docs/tools.md) — every CLI tool in `[tools]` and how it is wired up.
 - [New machine](./docs/new-machine.md) — fresh-machine setup and troubleshooting.
 - [Sandbox](./docs/sandbox.md) — the devbox behind controllers; telemetry backends.
+- [Worktainer and OpenSandbox](./docs/comparison-opensandbox.md) — this sandbox compared with the OpenSandbox platform.
 - [Docs index](./docs/README.md) — overview, layout, and conventions.
 
 ## Version control
