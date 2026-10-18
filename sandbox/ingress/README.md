@@ -120,5 +120,9 @@ from the entry itself.
   alone, so it works whichever address it picked.
 - **No egress shaping here.** Anything leaving the sandbox is shaped by the
   egress controller, not this one.
-- **2222 has no sshd behind it by default.** Start one in the devbox if you
-  want it; the forward is already in place.
+- **The sshd ships in the devbox.** Port 2222 reaches it with nothing to
+  start: the image bakes an sshd listening on 2222 inside the devbox (which
+  is why the forward targets that port — an unprivileged sshd cannot bind
+  22). Its authorized keys are served by OpenBao, not baked into the image;
+  until a key is stored in `secret/devbox/authorized_keys` every login is
+  refused. See [`dev/README.md`](../dev/README.md).

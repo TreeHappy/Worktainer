@@ -154,6 +154,20 @@ else
     note "host port 8080 -> devbox" "curl is not installed on this host"
 fi
 
+# The devbox ships an sshd (started by compose.yaml, listening on 2222 inside
+# the container). Its authorized keys come from OpenBao, so this checks the
+# listener and the key list — not a login, which needs a user key.
+check "devbox sshd listens inside the container on 2222" \
+    podman exec sandbox-devbox \
+    bash -c 'exec 3<>/dev/tcp/127.0.0.1/2222'
+
+if podman exec sandbox-devbox test -s /home/dev/.ssh/authorized_keys 2>/dev/null; then
+    ok "devbox authorized_keys provisioned from openbao"
+else
+    note "devbox authorized_keys provisioned from openbao" \
+         "store keys in secret/devbox/authorized_keys, then bin/sandbox exec devbox sshd-init"
+fi
+
 echo
 echo "== telemetry =="
 if command -v curl >/dev/null 2>&1; then

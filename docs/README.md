@@ -17,7 +17,8 @@ the manifest at `sandbox/dev/mise.toml`.
   tools (podman and its rootless helpers, for the [sandbox](./sandbox.md)).
 
 `sandbox/dev/mise.toml` is the container's variant of the same config: the same
-`[tools]` and `[dotfiles]`, minus `[bootstrap.packages]` (the image never runs
+`[tools]` and the same `[dotfiles]` plus the devbox's own sshd config (nothing
+the host would deploy), minus `[bootstrap.packages]` (the image never runs
 `mise bootstrap`). Run mise from the repo root; a new machine reproduces the
 whole environment with `mise install && mise dot apply` (plus `mise bootstrap`
 for the apt packages).
@@ -43,6 +44,8 @@ dotfiles/                every config source (the manifest lives at the repo roo
   yazi/                  Yazi file manager config (theme = Catppuccin Frappé)
   yazi/flavors/          vendored Catppuccin Frappé flavor
   zellij/config.kdl      source for ~/.config/zellij/config.kdl
+  sshd/sshd_config       sshd config for the devbox container
+                         (deployed by sandbox/dev/mise.toml only, not on the host)
 mise.toml                host config: [tools] + [dotfiles] + [bootstrap.packages]
 sandbox/                 a multi-container sandbox: devbox + ingress/egress + telemetry
 sandbox/dev/mise.toml    container config: [tools] + [dotfiles]

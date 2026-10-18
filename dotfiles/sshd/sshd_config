@@ -1,0 +1,23 @@
+# sshd for the devbox image (sandbox/dev/Dockerfile), deployed by
+# sandbox/dev/mise.toml [dotfiles] — never by the repo-root config on a host.
+#
+# The daemon runs as the unprivileged `dev` user, so it cannot bind the
+# privileged port 22; it listens on 2222 instead, which is the port the
+# ingress DNATs host 2222 to. auth is key-only: as `dev` there is no root to
+# read /etc/shadow and PAM is off, so passwords could not be honoured anyway.
+# Public keys come from OpenBao (secret/devbox/authorized_keys, pulled by
+# sshd-init on boot — see sandbox/dev/README.md); this config only decides
+# where sshd listens and which key file it uses.
+#
+# The host key is generated in the Dockerfile at ~/.ssh/sshd/, next to this
+# config — a rebuild bakes a new one, so connecting clients will see the
+# change.
+
+Port 2222
+HostKey /home/dev/.ssh/sshd/ssh_host_ed25519_key
+PidFile /home/dev/.ssh/sshd.pid
+AuthorizedKeysFile /home/dev/.ssh/authorized_keys
+Subsystem sftp internal-sftp
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+UsePAM no

@@ -21,7 +21,9 @@ set -eu
 : "${DATA_IP:=10.89.1.3}"          # this container's data-plane address
 # host-port:target-ip:target-port. Mirrors compose.yaml, which sets the same
 # list explicitly so the port map is visible next to the published ports.
-FORWARDS_DEFAULT="2222:10.89.1.10:22 8080:10.89.1.10:8080 9419:10.89.0.20:80 9420:10.89.0.21:8000 9421:10.89.0.22:4319"
+# The devbox pair points at the sshd built into the image (port 2222 inside
+# the devbox; an unprivileged sshd cannot bind 22).
+FORWARDS_DEFAULT="2222:10.89.1.10:2222 8080:10.89.1.10:8080 9419:10.89.0.20:80 9420:10.89.0.21:8000 9421:10.89.0.22:4319"
 : "${FORWARDS:=$FORWARDS_DEFAULT}"
 : "${RATE:=100mbit}"               # shaping for the devbox-facing link
 : "${DELAY:=0ms}"                  # netem delay added to it

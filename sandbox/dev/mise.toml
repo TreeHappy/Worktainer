@@ -27,6 +27,7 @@ jq = "latest"
 lazygit = "latest"
 neovim = "latest"
 node = "latest"
+
 opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
 pi = "latest"
 "aqua:dalance/procs" = "latest"
@@ -55,3 +56,6 @@ zoxide = "latest"
 "~/.config/yazi" = { source = "dotfiles/yazi", mode = "symlink-each" }
 "~/.config/zellij/config.kdl" = { source = "dotfiles/zellij/config.kdl" }
 "~/.pi/agent" = { source = "dotfiles/pi", mode = "symlink-each" }
+# Deployed only in this container, not on a host (the sshd of the devbox
+# image; see dotfiles/sshd/sshd_config and sandbox/dev/README.md).
+"~/.ssh/sshd/sshd_config" = { source = "dotfiles/sshd/sshd_config" }

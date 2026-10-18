@@ -53,9 +53,11 @@ services:
       CTRL_IP: 10.89.0.3
       DATA_IP: 10.89.1.3
       # host-port:target-ip:target-port. The host ports are published below;
-      # each is DNAT'd here to the devbox or to a telemetry UI.
+      # each is DNAT'd here to the devbox or to a telemetry UI. The 2222 pair
+      # forwards to the sshd the devbox image ships, which listens on 2222
+      # inside the devbox (an unprivileged sshd cannot bind 22).
       FORWARDS: >-
-        2222:10.89.1.10:22
+        2222:10.89.1.10:2222
         8080:10.89.1.10:8080
         9419:10.89.0.20:80
         9420:10.89.0.21:8000
@@ -134,9 +136,28 @@ services:
     image: localhost/sandbox-devbox:latest
     container_name: sandbox-devbox
     hostname: devbox
-    # The image's CMD is an interactive bash; keep the container alive so it
-    # can be entered with `bin/sandbox shell devbox`.
-    command: ["sleep", "infinity"]
+    # The image's CMD is an interactive bash. Here the devbox boots for real:
+    # sshd-init loads ~/.ssh/authorized_keys from OpenBao (see sandbox/dev/
+    # README.md), then the image's baked sshd takes over as the container
+    # process — in the foreground (-D) with stderr logging (-e), so auth
+    # attempts land in `bin/sandbox logs devbox`. Listening on 2222: the
+    # unprivileged sshd cannot bind 22, and the ingress DNATs the host's 2222
+    # to this port. The container lives only while sshd lives; a failure is
+    # visible as a restart, not a silently dead sshd.
+    command:
+      - /bin/bash
+      - -c
+      - |
+        set -e
+        sshd-init
+        exec /usr/sbin/sshd -D -e -f ~/.ssh/sshd/sshd_config
+    # Where the devbox's secrets live: OpenBao (see sandbox/openbao/). The
+    # bao CLI and sshd-init read BAO_ADDR/BAO_TOKEN from here; BAO_TOKEN is
+    # that server's dev-mode root token — this is a devbox, not a production
+    # vault.
+    environment:
+      BAO_ADDR: http://10.89.1.20:8200
+      BAO_TOKEN: sandbox-root-token
     # DNS is served by the egress container, so lookups cross the boundary.
     dns:
       - 10.89.1.2
