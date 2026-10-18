@@ -21,7 +21,11 @@ HISTFILESIZE=2000
 shopt -s checkwinsize
 
 # make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+# `command -v` rather than /usr/bin/lesspipe: the devbox image has no /usr/bin,
+# it has a nix closure, and the path differs per machine.
+if command -v lesspipe >/dev/null 2>&1; then
+    eval "$(SHELL=/bin/sh lesspipe)"
+fi
 
 # set variable identifying the chroot you work in (used in the prompt below)
 if [ -z "$debian_chroot" ] && [ -r /etc/debian_chroot ]; then
@@ -66,7 +70,7 @@ xterm*|rxvt*)
 esac
 
 # enable color support for grep
-if [ -x /usr/bin/dircolors ]; then
+if command -v dircolors >/dev/null 2>&1; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
 
     alias grep='grep --color=auto'
@@ -119,16 +123,15 @@ fi
 export EDITOR=nvim
 export VISUAL=nvim
 
-# mise: use an explicit path because this runs before mise is on PATH.
-# $HOME/.local/bin is the per-user install (as in the Docker image); fall back
-# to PATH for a system-wide install.
-if [ -x "$HOME/.local/bin/mise" ]; then
-    eval "$("$HOME"/.local/bin/mise activate bash)"
-    eval "$("$HOME"/.local/bin/mise completion bash)"
-elif command -v mise >/dev/null 2>&1; then
-    eval "$(mise activate bash)"
-    eval "$(mise completion bash)"
-fi
+# nix: the tools arrive in the profile home-manager (or `nix profile install`)
+# maintains, which is ~/.nix-profile/bin. Prepended explicitly because this file
+# also runs on a machine where no profile switch has happened yet — a fresh
+# login before `home-manager switch` would otherwise find no tools at all.
+case ":$PATH:" in
+    *":$HOME/.nix-profile/bin:"*) ;;
+    *) export PATH="$HOME/.nix-profile/bin:$PATH" ;;
+esac
+
 eval "$(starship init bash)"
 eval "$(carapace _carapace bash)"
 eval "$(atuin init bash)"

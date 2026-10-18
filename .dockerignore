@@ -1,6 +1,0 @@
-# Keep the devbox build context (the repository root — see
-# sandbox/dev/Dockerfile) down to what the image actually copies: dotfiles/,
-# sandbox/dev/mise.toml, sandbox/dev/sshd-init.sh and sandbox/ca/. VCS metadata
-# is bulk and changes constantly; nothing in the image reads it.
-.git
-.jj
