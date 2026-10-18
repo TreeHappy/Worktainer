@@ -10,7 +10,7 @@ questions below are settled and cited; the unit bodies are not written yet. Work
 through *Conversion order* at the bottom.
 
 Everything here was read out of podman 5.7's Quadlet implementation, not from
-habit — see *Verified against podman 5.7* at the end for the sources.
+habit — see *Verification* at the end for the sources.
 
 ## Layout
 
@@ -36,9 +36,9 @@ File names are the systemd unit names: `sandbox-egress.container` becomes
 `sandbox-egress.service`, `sandbox-ctrl.network` becomes
 `sandbox-ctrl-network.service`.
 
-`NetworkName=` and `VolumeName=` are set explicitly on every one of them, so the
-podman resources keep the `sandbox-*` names the rest of the tooling already
-expects. Without it Quadlet would name every one of them `systemd-<file>`.
+`NetworkName=` and `VolumeName=` are set explicitly on every network and volume,
+so the podman resources keep the `sandbox-*` names the rest of the tooling
+already expects. Without it Quadlet would name each one `systemd-<file>`.
 
 ## How the units reach systemd
 
@@ -57,13 +57,13 @@ Two links per surface rather than one directory symlink, so a drop-in
 (`sandbox-ingress.container.d/10-override.conf`) can live in `~/.config` and
 survive a re-link.
 
-The env files are the exception. `EnvironmentFile=` in `[Container]` is resolved
-relative to the unit file's own directory at generation time, which is the
-`~/.config` path when the unit was found through a symlink — so a repo-relative
-path is not dependable. They are linked too, to `~/.config/sandbox/env/`, and
-referenced as `%h/.config/sandbox/env/<service>.env`. systemd expands `%h` in
-the generated `ExecStart`, so it lands right regardless of where the checkout
-is.
+The env files sit next to the units and are referenced **relatively**
+(`EnvironmentFile=environments/egress.env`). `EnvironmentFile=` is resolved
+against the unit file's own directory, and Quadlet calls `EvalSymlinks` on every
+entry it finds in a search directory — so for a symlinked unit that directory is
+the checkout, not `~/.config`. The relative path lands in the repo, which is
+what makes this work at all. An absolute path here would have to name the
+checkout, which is exactly the thing a tracked file must not do.
 
 ## What maps to what
 
@@ -78,8 +78,8 @@ is.
 | `sysctls:` | `Sysctl=` | |
 | `dns:` | `DNS=` | |
 | `environment:` | `EnvironmentFile=` | |
-| `volumes:` (named) | `*.volume` + `Volume=` | auto-created, auto-ordered |
-| `volumes:` (bind) | `Mount=type=bind,…` | |
+| `volumes:` (named) | `*.volume` + `Volume=n.volume:/data` | auto-created, auto-ordered |
+| `volumes:` (bind) | `Volume=./ca:/etc/sandbox/ca:ro` | a leading `.` is what makes the source unit-relative |
 | `depends_on:` | `[Unit] Requires=` + `After=` | or `Wants=` — see below |
 | `restart: unless-stopped` | `[Service] Restart=always` | |
 | `command:` | `Exec=` | |
@@ -144,10 +144,10 @@ Common to all of them: `Image=` (Nix-built by the time this lands),
 
 | Unit | Networks | Publishes | Notes |
 | ---- | -------- | --------- | ----- |
-| `sandbox-ingress` | ctrl `.3`, data `.3` | 2222, 8080, 8200, 9419-9421 | `AddCapability=NET_ADMIN NET_RAW`, `Sysctl=net.ipv4.ip_forward=1`, `DNS=9.9.9.9`, `Wants=` the three telemetry units |
+| `sandbox-ingress` | ctrl `.3`, data `.3` | 2222, 8080, 8200, 9419-9421 | `AddCapability=CAP_NET_ADMIN CAP_NET_RAW`, `Sysctl=net.ipv4.ip_forward=1`, `DNS=9.9.9.9`, `Wants=` the three telemetry units |
 | `sandbox-egress` | ctrl `.2`, data `.2`, wan `.2` | — | as ingress, plus `Requires=` OpenBao and the read-only CA bind mount |
 | `sandbox-devbox` | data `.10` | — | `DNS=10.89.1.2`, `Exec=` the `sshd-init && exec sshd -D -e` sequence, `User=dev` |
-| `sandbox-openbao` | data `.20` | — | no capability, no limit; root token in `environments/openbao.env` |
+| `sandbox-openbao` | data `.20` | — | no capability, no limit. The root token is in `environments/openbao.env`, tracked — exactly as it is in `compose.yaml` today, and for the same reason (audit S1) |
 | `sandbox-telemetry-o11ylite` | ctrl `.20` | — | volume-backed `/data` |
 | `sandbox-telemetry-otel-desktop-viewer` | ctrl `.21` | — | `Exec=` its CLI flags, DuckDB on the volume |
 | `sandbox-telemetry-otelop` | ctrl `.22` | — | volume-backed `/data` |
@@ -158,7 +158,7 @@ the other five get neither, which is the default and worth stating.
 ### Environments
 
 One `environments/<service>.env` per service, referenced by
-`EnvironmentFile=%h/.config/sandbox/env/<service>.env` from `[Container]` — not
+`EnvironmentFile=environments/<service>.env` from `[Container]` — not
 `[Service]`, where systemd would read it into the `podman` process instead of
 passing it on. The file is a plain `KEY=value` list with no quoting, so it reads
 identically as a systemd env file, as a `--env-file`, and as a shell `set -a;
@@ -189,16 +189,18 @@ controllers.
 1. **`ContainerName=` on all seven.** Without it Quadlet names each container
    `systemd-sandbox-<service>` and every `podman exec sandbox-*` in
    `../bin/check` and `../bin/sandbox` breaks.
-2. **`Restart=always`, not `unless-stopped`.** The two differ on a clean exit:
-   systemd restarts a container that exited 0, podman's `unless-stopped` does
-   not. `systemctl --user stop` still wins in both cases. The controllers are
-   the ones where it matters — the egress exits non-zero deliberately when its
-   proxy dies, and the restart policy is the intended recovery.
+2. **`Restart=always`, not `unless-stopped`** — and it goes in `[Service]`.
+   `Restart` is not a `[Container]` key, so writing it there fails generation as
+   an unknown key. The two differ on a clean exit: systemd restarts a container
+   that exited 0, podman's `unless-stopped` does not. `systemctl --user stop`
+   still wins in both cases. The controllers are where it matters — the egress
+   exits non-zero deliberately when its proxy dies, and the restart policy is the
+   intended recovery.
 3. **`CgroupsMode` defaults to `split`.** Fine at today's limits; if a
    `Memory=` is ever exceeded and the unit does not react as expected, this is
    the first thing to look at.
-4. **cgroup v2 is required** and this host must have it before any of this
-   starts: `podman info --format '{{.Host.CgroupsVersion}}'`.
+4. **cgroup v2 is required.** Check it before starting, since nothing here can:
+   `podman info --format '{{.Host.CgroupsVersion}}'`.
 5. **`TimeoutStartSec=900`** for a cold start that pulls an image.
 6. **`bin/sandbox rules` keeps working with no container and no systemd.** It
    reads `environments/<service>.env` and runs the entrypoint with `DRY_RUN=1`.
@@ -236,11 +238,19 @@ being targeted:
 | `Network=x.network` resolves to the resource name and adds `Requires=`/`After=` | `addNetworks`, same file |
 | `.network` reference implies the `systemd-` name and a dependency | `podman-systemd.unit(5)`, `Network=` |
 | `EnvironmentFile=` resolves relative to the unit file | `getAbsolutePath` called from the `KeyEnvironmentFile` branch |
+| …and for a symlinked unit that is the checkout, not `~/.config` | `AppendSubPaths` calls `EvalSymlinks` on every search-dir entry, `unitdirs.go` |
 | Resource names default to `systemd-<file>` | `getResourceName`, same file |
+| Capabilities are `CAP_`-prefixed and space-separated | `podman-systemd.unit(5)`, `AddCapability=` |
 
-Left to run on a host that can: `systemctl --user start sandbox-egress.service`
-and `podman network inspect sandbox-data | grep -A5 Route`, diffed against what
-`bin/networks` creates today — the step the todo called step 2.
+Left to run on a host that can:
+
+```sh
+systemctl --user start sandbox-data-network.service
+podman network inspect sandbox-data | grep -A5 Route
+```
+
+diffed against what `bin/networks` creates today — the step the todo called
+step 2.
 
 ## Conversion order
 
