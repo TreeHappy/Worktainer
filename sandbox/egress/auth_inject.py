@@ -54,19 +54,24 @@ def matches(host, pattern):
 def parse_jobs(spec):
     """`HEADER_JOBS` -> [(host pattern, API path)], most specific pattern first.
 
-    A malformed line is dropped with a loud warning rather than raised: this
-    runs inside the egress controller, and one typo in a compose env var must
-    not take DNS and masquerading down with it.
+    Jobs are separated by a newline *or* a semicolon. The semicolon exists
+    because a systemd env file cannot hold a multi-line value, and the move off
+    compose needed one job per secret. Both separators work, so the same value
+    reads correctly whether it came from an env file or from a shell.
+
+    A malformed job is dropped with a loud warning rather than raised: this runs
+    inside the egress controller, and one typo must not take DNS and
+    masquerading down with it.
     """
     jobs = []
-    for lineno, line in enumerate(spec.splitlines(), 1):
+    for lineno, line in enumerate(re.split(r"[\n;]", spec), 1):
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
         parts = line.split()
         if len(parts) != 2 or not parts[1].startswith("bao:"):
             log.warning(
-                "HEADER_JOBS line %d ignored: want '<host> bao:<mount>/<path>', got %r",
+                "HEADER_JOBS entry %d ignored: want '<host> bao:<mount>/<path>', got %r",
                 lineno, line,
             )
             continue

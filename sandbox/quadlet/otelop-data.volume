@@ -1,0 +1,4 @@
+# otelop's store, for the same reason as the other two: the whole point of three
+# telemetry backends is comparing the same spans across them after a restart.
+[Volume]
+VolumeName=otelop-data

@@ -1,0 +1,69 @@
+# sandbox-devbox: the developer's environment, and the thing that is only
+# reachable through the two controllers.
+#
+# Replaces the `devbox` service in sandbox/compose.yaml. The image is built by
+# nix (nix/images/devbox.nix) and loaded by `bin/sandbox build`.
+#
+# The image's own CMD is an interactive bash. Here the devbox boots for real:
+# devbox-init appends the mounted sandbox CA to the trust store, sshd-init loads
+# ~/.ssh/authorized_keys from OpenBao (see sandbox/dev/README.md), and then the
+# baked sshd takes over as the container process — in the foreground (-D) with
+# stderr logging (-e), so auth attempts land in `bin/sandbox logs devbox`. The
+# container lives only while sshd lives; a failure shows up as a restart, not a
+# silently dead sshd.
+#
+# Seeding a key is therefore: a curl into OpenBao, then a restart of this unit.
+
+[Unit]
+Description=sandbox devbox
+# All three, and all three load-bearing:
+#   egress   without it the devbox has no route at all — the data network's
+#            default route points at it and nowhere else
+#   ingress  the host's published ports are DNAT'd through it to the sshd
+#   openbao  sshd-init has nowhere to fetch authorized keys from
+Requires=sandbox-egress.service
+Requires=sandbox-ingress.service
+Requires=sandbox-openbao.service
+After=sandbox-egress.service
+After=sandbox-ingress.service
+After=sandbox-openbao.service
+
+[Container]
+ContainerName=sandbox-devbox
+Image=localhost/sandbox-devbox:latest
+HostName=devbox
+
+# One network, one address — and it is the only one the devbox gets. Not on
+# ctrl: the control plane is not reachable from the agent's side, which is half
+# of what makes it a control plane.
+Network=sandbox-data.network:ip=10.89.1.10
+
+# The devbox's resolver is the egress container, so name resolution crosses the
+# boundary with everything else.
+DNS=10.89.1.2
+
+EnvironmentFile=environments/devbox.env
+
+# Where the devbox's secrets live: OpenBao (see sandbox/openbao/). The bao CLI
+# and sshd-init read BAO_ADDR/BAO_TOKEN from here. See sandbox/dev/README.md —
+# and audit S1, which is about who is allowed to read that token.
+#
+# The sandbox CA, read-only. It is bind-mounted rather than baked because it is
+# generated per machine: a flake cannot see a gitignored file, and naming the
+# folder from nix would put the private key in the store and the store in the
+# image. devbox-init appends the certificate to /etc/ssl/certs.
+Volume=./ca:/etc/sandbox/ca:ro
+
+Exec=/usr/local/bin/devbox-init
+
+# Isolation. NoNewPrivileges matters most here: the devbox is the untrusted
+# side, and ubuntu:devel used to ship setuid binaries that a no_new_privileges
+# container could not use as a path to root.
+NoNewPrivileges=true
+DropCapability=CAP_AUDIT_WRITE CAP_MKNOD CAP_NET_BIND_SERVICE CAP_SETFCAP CAP_SETGID CAP_SETPCAP CAP_SYS_CHROOT CAP_SYS_PTRACE
+PidsLimit=1024
+Memory=4G
+
+[Service]
+Restart=always
+TimeoutStartSec=900

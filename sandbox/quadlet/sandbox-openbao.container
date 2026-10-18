@@ -1,0 +1,33 @@
+# sandbox-openbao: the sandbox's secrets server.
+#
+# Replaces the `openbao` service in sandbox/compose.yaml. The image is upstream
+# and pinned by digest rather than built here — see nix/README.md — so this is
+# Image= and not a nix output.
+#
+# Dev mode, in-memory, one fixed root token. Only its own clients read it: the
+# devbox via sshd-init, the egress via its proxy. sandbox/openbao/README.md has
+# the layout and the recipes.
+
+[Unit]
+Description=sandbox secrets server
+
+[Container]
+ContainerName=sandbox-openbao
+Image=docker.io/openbao/openbao:latest
+HostName=openbao
+
+# On the data network, which the devbox is also on, because sshd-init has to
+# reach it. It is reachable from nowhere else — the ingress DNATs host :8200 to
+# it, so the API and its web UI are one loopback-bound port away and no more
+# (audit S5).
+Network=sandbox-data.network:ip=10.89.1.20
+
+# Nothing here needs a capability, a device or a mount.
+NoNewPrivileges=true
+DropCapability=ALL
+PidsLimit=256
+Memory=512M
+
+[Service]
+Restart=always
+TimeoutStartSec=900

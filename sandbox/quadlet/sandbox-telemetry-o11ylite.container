@@ -1,0 +1,30 @@
+# sandbox-telemetry-o11ylite: one of three span stores.
+#
+# Replaces the `telemetry-o11ylite` service in sandbox/compose.yaml. One
+# container per backend, so the same spans can be compared across three
+# different stores and UIs.
+#
+# They live only on the control network — nobody on the data network can reach
+# them, which is the other half of what makes ctrl a control plane. Their web
+# UIs come in through the ingress on 9419.
+
+[Unit]
+Description=sandbox telemetry: o11ylite
+
+[Container]
+ContainerName=sandbox-telemetry-o11ylite
+Image=localhost/sandbox-telemetry-o11ylite:latest
+HostName=telemetry-o11ylite
+
+Network=sandbox-ctrl.network:ip=10.89.0.20
+
+Volume=o11ylite-data.volume:/data
+
+NoNewPrivileges=true
+DropCapability=ALL
+PidsLimit=256
+Memory=1G
+
+[Service]
+Restart=always
+TimeoutStartSec=900

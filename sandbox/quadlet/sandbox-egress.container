@@ -1,0 +1,57 @@
+# sandbox-egress: the only way out of the sandbox to the internet.
+#
+# Replaces the `egress` service in sandbox/compose.yaml. The image is built by
+# nix (nix/images/egress.nix) and loaded by `bin/sandbox build`, so this file
+# starts with Image= rather than build:.
+#
+# What it does, and how to steer it, is in sandbox/egress/README.md.
+
+[Unit]
+Description=sandbox egress controller
+# Load-bearing, unlike the ingress's relationship with the telemetry backends:
+# the proxy cannot inject a header it has not read, and there is no useful
+# partial state to fall back to. Requires= so a failure here fails the unit
+# rather than leaving a proxy running with no secrets.
+Requires=sandbox-openbao.service
+After=sandbox-openbao.service
+
+[Container]
+ContainerName=sandbox-egress
+Image=localhost/sandbox-egress:latest
+HostName=egress
+
+# Three networks, each with its own address, carried by the network rather than
+# by a global IP=.
+Network=sandbox-ctrl.network:ip=10.89.0.2
+Network=sandbox-data.network:ip=10.89.1.2
+Network=sandbox-wan.network:ip=10.89.2.2
+
+AddCapability=CAP_NET_ADMIN CAP_NET_RAW
+Sysctl=net.ipv4.ip_forward=1
+
+DNS=9.9.9.9
+
+EnvironmentFile=environments/egress.env
+
+# The sandbox CA, which the proxy signs what it presents to the devbox with.
+# Read-only: the container stages its own copy into mitmproxy's confdir and
+# never writes back. The leading `.` is what makes the source unit-relative.
+#
+# The key is in this folder too, which is why the mount is read-only and why
+# nothing in the image ever sees it (audit S2).
+Volume=./ca:/etc/sandbox/ca:ro
+
+# Isolation, from the findings in todo/compare/06-workload-and-isolation.md.
+# mitmdump runs python in-process, so give it room to work.
+NoNewPrivileges=true
+DropCapability=CAP_AUDIT_WRITE CAP_MKNOD CAP_NET_BIND_SERVICE CAP_SETFCAP CAP_SETGID CAP_SETPCAP CAP_SYS_CHROOT CAP_SYS_PTRACE
+PidsLimit=512
+Memory=1G
+
+[Service]
+Restart=always
+# The entrypoint exits non-zero when its proxy dies, deliberately: a silent
+# dead proxy means every outbound https request in the devbox fails with no
+# signal from out here. This is the restart that brings it back.
+RestartSec=2
+TimeoutStartSec=900

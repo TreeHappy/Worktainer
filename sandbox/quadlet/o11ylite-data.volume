@@ -1,0 +1,7 @@
+# o11ylite's store. A named volume rather than a container-local directory so
+# `bin/sandbox clean` can remove it and a rebuild cannot inherit it.
+#
+# Referenced as `Volume=o11ylite-data.volume:/data`, which makes podman create
+# the volume and systemd order the unit after this one.
+[Volume]
+VolumeName=o11ylite-data

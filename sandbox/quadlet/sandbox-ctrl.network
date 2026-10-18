@@ -1,0 +1,23 @@
+# The control plane: the two controllers and the three telemetry backends, and
+# nobody else. The devbox is deliberately not on it.
+#
+# Replaces one `podman network create` in sandbox/bin/networks.
+#
+#   no_default_route  the control plane must not reach the internet, and a
+#                     container must not acquire a default route on a network it
+#                     joins second
+#   --disable-dns     containers address each other by static IP, which is what
+#                     the ingress's DNAT rules match on
+#
+# systemd orders the containers after this unit automatically: anything with
+# `Network=sandbox-ctrl.network` gets a Requires= and an After= on
+# sandbox-ctrl-network.service, which is why bin/networks is gone.
+[Network]
+NetworkName=sandbox-ctrl
+Subnet=10.89.0.0/24
+Options=no_default_route=1
+DisableDNS=true
+
+# Remove the network when the unit stops, so `bin/sandbox clean` does not need
+# its own teardown.
+NetworkDeleteOnStop=true

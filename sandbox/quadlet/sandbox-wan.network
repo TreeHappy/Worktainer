@@ -1,0 +1,16 @@
+# The egress's uplink to the host. One member: the egress container.
+#
+# Replaces one `podman network create` in sandbox/bin/networks.
+#
+#   metric=100        this is the egress's *real* default route. The wan network
+#                     is the one it prefers over the self-referential default
+#                     the data network installs in every member — hence the
+#                     metric, and hence the entrypoint's route juggling.
+#   --disable-dns     same reason as the other two: static IPs, and DNS is the
+#                     devbox's problem, not the controller's.
+[Network]
+NetworkName=sandbox-wan
+Subnet=10.89.2.0/24
+Options=metric=100
+DisableDNS=true
+NetworkDeleteOnStop=true

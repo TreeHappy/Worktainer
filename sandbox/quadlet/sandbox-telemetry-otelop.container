@@ -1,0 +1,26 @@
+# sandbox-telemetry-otelop: one of three span stores.
+#
+# Replaces the `telemetry-otelop` service in sandbox/compose.yaml.
+#
+# The image is upstream and pulled rather than built here — see nix/README.md.
+
+[Unit]
+Description=sandbox telemetry: otelop
+
+[Container]
+ContainerName=sandbox-telemetry-otelop
+Image=localhost/sandbox-telemetry-otelop:latest
+HostName=telemetry-otelop
+
+Network=sandbox-ctrl.network:ip=10.89.0.22
+
+Volume=otelop-data.volume:/data
+
+NoNewPrivileges=true
+DropCapability=ALL
+PidsLimit=256
+Memory=1G
+
+[Service]
+Restart=always
+TimeoutStartSec=900

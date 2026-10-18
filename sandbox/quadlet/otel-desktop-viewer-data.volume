@@ -1,0 +1,5 @@
+# otel-desktop-viewer's DuckDB store. The container is told to keep it on disk
+# (`--db /data/...`) rather than in its default in-memory store, so this volume
+# is the span history that survives a restart.
+[Volume]
+VolumeName=otel-desktop-viewer-data

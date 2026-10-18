@@ -1,0 +1,31 @@
+# The devbox network, and the reason this migration was worth doing.
+#
+# Replaces one `podman network create` in sandbox/bin/networks. Everything here
+# is that script's four flags, one of which had no key of its own:
+#
+#   no_default_route   the devbox gets its default route from the --route below,
+#                      not from this subnet
+#   --disable-dns      the devbox's resolver is the egress container, so name
+#                      resolution crosses the same boundary as the rest of its
+#                      traffic; see DNS= in sandbox-devbox.container
+#   --route            THE ONE. A default route to the egress container at
+#                      10.89.1.2, installed in every member. This is the single
+#                      property the sandbox exists to provide: the devbox's only
+#                      way out is the egress, and this is where it is written
+#                      down.
+#
+# There is no `Route=` key in Quadlet — the generated `podman network create`
+# has no route argument at all. `PodmanArgs=` is a supported key on [Network]
+# and is where this goes; it is the only spelling available, not a workaround.
+[Network]
+NetworkName=sandbox-data
+Subnet=10.89.1.0/24
+Options=no_default_route=1
+DisableDNS=true
+PodmanArgs=--route=0.0.0.0/0,10.89.1.2,1000
+
+# Metric 1000 rather than the default, because the egress container is itself a
+# member of this network and therefore gets a default route pointing at its own
+# address. Its entrypoint deletes it and falls back to the wan default; this
+# metric keeps the wan route preferred in the window before that runs.
+NetworkDeleteOnStop=true
