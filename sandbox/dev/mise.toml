@@ -27,7 +27,7 @@ jq = "latest"
 lazygit = "latest"
 neovim = "latest"
 node = "latest"
-
+openbao = "latest"      # the devbox's client for sandbox-openbao (bao CLI)
 opencode = { version = "latest", allow_builds = ["@opencode/cli"] }
 pi = "latest"
 "aqua:dalance/procs" = "latest"

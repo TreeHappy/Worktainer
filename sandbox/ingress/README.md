@@ -8,12 +8,14 @@ the link towards the devbox, and counts what it forwards.
 
 ```mermaid
 flowchart LR
-    H(["host :2222 :8080<br/>:9419 :9420 :9421"]) --> PR["prerouting<br/>nat prerouting"]
+    H(["host :2222 :8080 :8200<br/>:9419 :9420 :9421"]) --> PR["prerouting<br/>nat prerouting"]
     PR -->|"dnat ip"| F["forward<br/>counter: forwarded"]
     F --> D["devbox<br/>10.89.1.10"]
+    F --> O["openbao<br/>10.89.1.20"]
     F --> T["telemetry UIs<br/>10.89.0.20-22"]
     PR --> POST["postrouting<br/>masquerade → own address<br/>(pins the reply path)"]
     D --> POST
+    O --> POST
     T --> POST
     POST --> H
     DATA["data link 10.89.1.3"] -.->|"tbf + netem<br/>RATE / DELAY / LOSS"| F

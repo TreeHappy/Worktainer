@@ -47,8 +47,9 @@ dotfiles/                every config source (the manifest lives at the repo roo
   sshd/sshd_config       sshd config for the devbox container
                          (deployed by sandbox/dev/mise.toml only, not on the host)
 mise.toml                host config: [tools] + [dotfiles] + [bootstrap.packages]
-sandbox/                 a multi-container sandbox: devbox + ingress/egress + telemetry
+sandbox/                 a multi-container sandbox: devbox + ingress/egress + telemetry + openbao
 sandbox/dev/mise.toml    container config: [tools] + [dotfiles]
+sandbox/openbao/         the sandbox's secrets server (OpenBao in dev mode)
 docs/                    this documentation
 ```
 

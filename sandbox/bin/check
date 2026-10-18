@@ -32,7 +32,7 @@ done
 
 echo
 echo "== containers =="
-for name in sandbox-ingress sandbox-egress sandbox-devbox \
+for name in sandbox-ingress sandbox-egress sandbox-devbox sandbox-openbao \
             sandbox-telemetry-o11ylite sandbox-telemetry-otel-desktop-viewer \
             sandbox-telemetry-otelop; do
     if podman ps --format '{{.Names}}' 2>/dev/null | grep -qx "$name"; then
@@ -81,6 +81,19 @@ if [ "$code" = "200" ]; then
     ok "devbox reaches the internet (https://example.com -> 200)"
 else
     bad "devbox reaches the internet" "got HTTP '$code'"
+fi
+
+echo
+echo "== openbao, the secrets server =="
+# The devbox's sshd-init fetches its authorized keys from openbao at boot, so
+# the devbox has to be able to reach it across the data network. The health
+# endpoint needs no token and answers 200 while the dev-mode server is active.
+code=$(podman exec sandbox-devbox curl -sS -o /dev/null -w '%{http_code}' \
+        --max-time 5 http://10.89.1.20:8200/v1/sys/health 2>/dev/null || true)
+if [ "$code" = "200" ]; then
+    ok "devbox reaches openbao (10.89.1.20:8200 -> 200)"
+else
+    bad "devbox reaches openbao" "got HTTP '$code'"
 fi
 
 echo
@@ -152,6 +165,21 @@ if command -v curl >/dev/null 2>&1; then
     esac
 else
     note "host port 8080 -> devbox" "curl is not installed on this host"
+fi
+
+# OpenBao's API and web UI. /v1/sys/health needs no token and answers 200 as
+# long as the dev-mode server is active.
+if command -v curl >/dev/null 2>&1; then
+    code=$(curl -sS -o /dev/null -w '%{http_code}' \
+           --max-time 10 "http://127.0.0.1:8200/v1/sys/health" 2>/dev/null || true)
+    case "$code" in
+        200) ok "host port 8200 reaches openbao (/v1/sys/health -> 200)" ;;
+        000|"") bad "host port 8200 reaches openbao" \
+                     "connection failed (code '$code')" ;;
+        *) bad "host port 8200 reaches openbao" "got HTTP '$code'" ;;
+    esac
+else
+    note "host port 8200 reaches openbao" "curl is not installed on this host"
 fi
 
 # The devbox ships an sshd (started by compose.yaml, listening on 2222 inside
