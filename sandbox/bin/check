@@ -9,6 +9,7 @@
 set -u
 
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+sandbox=$(dirname -- "$here")      # .../sandbox, for the CA the checks compare against
 
 pass=0
 fail=0
@@ -162,16 +163,87 @@ else
     bad "egress redirects the devbox's https to the proxy"
 fi
 
-# The devbox trusts the sandbox CA (it is baked into the image), which is what
-# lets the proxy present a certificate the devbox accepts. python's default
-# context reads the system store, so asking it is the same question curl asks.
-if podman exec sandbox-devbox python3 -c \
-    'import ssl, sys; sys.exit(0 if any("sandbox-ca" in str(c.get("subject", ())) for c in ssl.create_default_context().get_ca_certs()) else 1)' \
-    >/dev/null 2>&1; then
-    ok "devbox trusts the sandbox CA"
+# The devbox trusts the sandbox CA, which is what lets the proxy present a
+# certificate the devbox accepts. devbox-init appends the mounted certificate to
+# the system bundle at every start, so this is about the *running* container's
+# trust store, not the image's.
+#
+# By asking openssl to verify the mounted certificate against the system bundle,
+# not by looking for a subject. The audit found that "some CA called sandbox-ca
+# is trusted" passes for a CA that no longer matches the one the proxy signs
+# with (S7): every intercepted request then fails certificate verification and
+# the check still says PASS.
+#
+# Two things tried here first and abandoned, both of which would have been wrong
+# in a way that looks right:
+#   * matching on the subject, which is the S7 bug itself;
+#   * comparing `get_ca_certs()[i]["fingerprint"]` in python, which on 3.14
+#     exposes no fingerprint at all - only issuer, subject, serial and dates -
+#     so the comparison never matches and the check always FAILs.
+# openssl is what actually does the verification in the container, so ask it.
+ca_fingerprint=$(openssl x509 -in "$sandbox/ca/sandbox-ca.crt" -noout -sha256 -fingerprint 2>/dev/null |
+    sed 's/.*=//; s/://g')
+ca_fingerprint_tail=$(printf '%s' "$ca_fingerprint" | cut -c17-32)
+if [ -z "$ca_fingerprint" ]; then
+    note "devbox trusts the sandbox CA" \
+        "no $sandbox/ca/sandbox-ca.crt (run bin/sandbox ca)"
+elif podman exec sandbox-devbox openssl verify -no-CAfile -no-CApath \
+    -trusted /etc/ssl/certs/ca-certificates.crt \
+    /etc/sandbox/ca/sandbox-ca.crt >/dev/null 2>&1; then
+    ok "devbox trusts the sandbox CA (sha256 $ca_fingerprint_tail)"
 else
-    bad "devbox trusts the sandbox CA" \
-        "run bin/sandbox ca, then bin/sandbox build (the certificate is baked in)"
+    bad "devbox trusts the sandbox CA (sha256 $ca_fingerprint_tail)" \
+        "the devbox does not trust this certificate (sha256 $ca_fingerprint_tail). Either the image predates the current CA - rebuild it - or devbox-init could not append the mounted one; see bin/sandbox logs devbox"
+fi
+
+# S1: the devbox must not hold a token that can reach anything but its own
+# authorized_keys. This is the check that would have caught the original
+# finding, and the one that stops it coming back.
+#
+# It asks the vault, from the devbox's own token, for the two things that must
+# not be reachable: the provider key, and a write to its own key list.
+echo
+echo "== the devbox's vault token is scoped (audit S1) =="
+devbox_token=$(podman exec sandbox-devbox cat /vault/devbox.token 2>/dev/null || true)
+if [ -z "$devbox_token" ]; then
+    note "devbox token cannot read the provider keys" \
+        "no /vault/devbox.token in the devbox (is sandbox-openbao healthy? bin/sandbox logs openbao)"
+    note "devbox token cannot write its own authorized_keys" \
+        "no /vault/devbox.token in the devbox"
+else
+    for forbidden in 'secret/data/egress/anthropic' 'secret/data/egress/openai'; do
+        code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+               -H "X-Vault-Token: $devbox_token" \
+               "http://10.89.1.20:8200/v1/$forbidden" 2>/dev/null || true)
+        if [ "$code" = "403" ]; then
+            ok "devbox token cannot read $forbidden (403)"
+        else
+            bad "devbox token cannot read $forbidden" \
+                "got HTTP ${code:-no response} - the devbox holds a token that is not scoped to its own secret (audit S1)"
+        fi
+    done
+
+    code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+           -X POST -H "X-Vault-Token: $devbox_token" -H 'Content-Type: application/json' \
+           -d '{"data":{"authorized_keys":"ssh-ed25519 AAAA bin-check-probe"}}' \
+           "http://10.89.1.20:8200/v1/secret/data/devbox/authorized_keys" 2>/dev/null || true)
+    if [ "$code" = "403" ]; then
+        ok "devbox token cannot write its own authorized_keys (403)"
+    else
+        bad "devbox token cannot write its own authorized_keys" \
+            "got HTTP ${code:-no response} - the agent could add its own SSH key"
+    fi
+
+    # And the same token must not be the root token, which is the whole point.
+    code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+           -H "X-Vault-Token: $devbox_token" \
+           "http://10.89.1.20:8200/v1/sys/mounts" 2>/dev/null || true)
+    if [ "$code" = "403" ]; then
+        ok "devbox token is not a root token (sys/mounts is 403)"
+    else
+        bad "devbox token is not a root token" \
+            "sys/mounts returned HTTP ${code:-no response}; this looks like the root token"
+    fi
 fi
 
 echo

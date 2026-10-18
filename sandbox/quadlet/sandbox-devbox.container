@@ -44,15 +44,21 @@ DNS=10.89.1.2
 
 EnvironmentFile=environments/devbox.env
 
-# Where the devbox's secrets live: OpenBao (see sandbox/openbao/). The bao CLI
-# and sshd-init read BAO_ADDR/BAO_TOKEN from here. See sandbox/dev/README.md —
-# and audit S1, which is about who is allowed to read that token.
-#
 # The sandbox CA, read-only. It is bind-mounted rather than baked because it is
 # generated per machine: a flake cannot see a gitignored file, and naming the
 # folder from nix would put the private key in the store and the store in the
 # image. devbox-init appends the certificate to /etc/ssl/certs.
 Volume=./ca:/etc/sandbox/ca:ro
+
+# Its own token for OpenBao — read on secret/devbox/authorized_keys and nothing
+# else. Read-only, and minted by sandbox/openbao/provision.sh at every boot
+# because dev-mode storage is in memory.
+#
+# It is a file rather than an environment variable deliberately: the root token
+# used to be in this container's environment, which meant `podman exec
+# sandbox-devbox env` handed the agent the key to every secret in the sandbox
+# (audit S1). There is no root token here now.
+Volume=sandbox-vault.volume:/vault:ro
 
 Exec=/usr/local/bin/devbox-init
 

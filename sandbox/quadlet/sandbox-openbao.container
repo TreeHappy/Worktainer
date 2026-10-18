@@ -1,15 +1,19 @@
 # sandbox-openbao: the sandbox's secrets server.
 #
 # Replaces the `openbao` service in sandbox/compose.yaml. The image is upstream
-# and pinned by digest rather than built here — see nix/README.md — so this is
-# Image= and not a nix output.
+# and pulled rather than built here — see nix/README.md — so this is Image= and
+# not a nix output.
 #
-# Dev mode, in-memory, one fixed root token. Only its own clients read it: the
-# devbox via sshd-init, the egress via its proxy. sandbox/openbao/README.md has
-# the layout and the recipes.
+# Dev mode, in-memory, one root token. Only its own clients read it, and only
+# through a token scoped to one path each (audit S1). sandbox/openbao/README.md
+# has the layout and the recipes.
 
 [Unit]
 Description=sandbox secrets server
+# The two clients block on their token appearing, so they will wait. Ordering
+# them after this unit keeps the common case from spending that wait.
+Before=sandbox-devbox.service
+Before=sandbox-egress.service
 
 [Container]
 ContainerName=sandbox-openbao
@@ -22,7 +26,25 @@ HostName=openbao
 # (audit S5).
 Network=sandbox-data.network:ip=10.89.1.20
 
-# Nothing here needs a capability, a device or a mount.
+EnvironmentFile=environments/openbao.env
+
+# The upstream image's entrypoint is replaced, not appended to: the dev server
+# has to start *first* and the policies and tokens have to be written into it
+# afterwards, which is a boot sequence rather than a command. The script is the
+# repo's, bind-mounted in, so it is visible and editable with the rest of the
+# sandbox.
+#
+# This is the only container whose command is a script from this repo rather than
+# its image's own.
+Entrypoint=/usr/local/bin/provision-openbao
+Volume=./openbao/provision.sh:/usr/local/bin/provision-openbao:ro
+
+# Where the two scoped tokens are handed to their clients. Written here, mounted
+# read-only by both. See sandbox-vault.volume.
+Volume=sandbox-vault.volume:/vault
+
+# Nothing here needs a capability, a device or a limit of its own; it is the
+# one container that must be able to write.
 NoNewPrivileges=true
 DropCapability=ALL
 PidsLimit=256

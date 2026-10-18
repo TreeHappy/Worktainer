@@ -47,7 +47,7 @@ set -eu
 : "${DEVBOX_IP:=10.89.1.10}"       # whose outbound 443 is intercepted
 : "${SANDBOX_NETS:=10.89.0.0/16}"  # sandbox-internal space: never intercepted
 : "${BAO_ADDR:=http://10.89.1.20:8200}"
-: "${BAO_TOKEN:=sandbox-root-token}"
+: "${VAULT_DIR:=/vault}"           # where this controller's own token is
 : "${BAO_RESYNC:=300}"             # seconds between secret re-reads; 0 = once
 : "${MITM_VERBOSITY:=info}"         # mitmdump log level; warn hides per-request lines
 
@@ -212,8 +212,19 @@ log "dnsmasq on $DATA_IF forwarding to $DNS_UPSTREAM"
 #    request in the window between the rule and the listener would be sent to a
 #    closed port.
 # --------------------------------------------------------------------------
+#    Its token comes out of the shared vault volume rather than the
+#    environment: the root token used to be in this container's environment
+#    (audit S1), and what is in the volume instead is scoped to
+#    secret/egress/* — the provider keys and nothing else, so it cannot reach
+#    the devbox's authorized_keys or mint a token of its own.
 PROXY_PID=
 if [ "$PROXY_ARMED" -eq 1 ]; then
+    if [ ! -r "$VAULT_DIR/egress.token" ]; then
+        log "no token at $VAULT_DIR/egress.token - check bin/sandbox logs openbao; without it the proxy can read no header"
+        exit 1
+    fi
+    BAO_TOKEN=$(cat "$VAULT_DIR/egress.token")
+
     # mitmproxy keeps its CA in <confdir>/mitmproxy-ca.pem as key+certificate
     # (and the bare certificate in mitmproxy-ca-cert.pem). Stage the sandbox
     # pair there, so the devbox only ever has to trust the sandbox CA.

@@ -12,9 +12,16 @@
 #
 # Environment (defaults mirror sandbox/quadlet/environments/devbox.env):
 #   BAO_ADDR        http://10.89.1.20:8200    the OpenBao container
-#   BAO_TOKEN       sandbox-root-token        dev-mode root token
+#   VAULT_DIR       /vault                    where this container's own token is
 #   SSH_KEYS_PATH   secret/devbox/authorized_keys
 #   SSH_KEYS_TRIES  10                        2 s apart, while openbao boots
+#
+# The token is read from $VAULT_DIR/devbox.token rather than taken from the
+# environment, and it is *this container's* token: scoped to SSH_KEYS_PATH and
+# nothing else. It is minted by sandbox/openbao/provision.sh at every boot,
+# because dev-mode storage is in memory — so the first few attempts here are
+# also waiting for the file to exist. The root token is not in this container
+# at all (audit S1).
 #
 # Either way sshd still starts: with an empty key list nobody gets in (the
 # failure is loud, and `bin/sandbox check` flags it), but the devbox itself
@@ -22,15 +29,25 @@
 set -u
 
 BAO_ADDR="${BAO_ADDR:-http://10.89.1.20:8200}"
-BAO_TOKEN="${BAO_TOKEN:-sandbox-root-token}"
+VAULT_DIR="${VAULT_DIR:-/vault}"
 SSH_KEYS_PATH="${SSH_KEYS_PATH:-secret/devbox/authorized_keys}"
 SSH_KEYS_TRIES="${SSH_KEYS_TRIES:-10}"
 
 log() { printf '%s sshd-init: %s\n' "$(date -u +%H:%M:%S)" "$*" >&2; }
 
+# The token this container is allowed to read one secret with. Empty means the
+# vault has not finished booting, or has wiped (dev mode is in memory), and the
+# retry loop below covers both.
+vault_token() {
+    [ -r "$VAULT_DIR/devbox.token" ] || return 1
+    cat "$VAULT_DIR/devbox.token" 2>/dev/null
+}
+
 tries=$SSH_KEYS_TRIES
+said_waiting=
 while [ "$tries" -gt 0 ]; do
-    if keys=$(bao kv get -field=authorized_keys "$SSH_KEYS_PATH" 2>/dev/null); then
+    if BAO_TOKEN=$(vault_token) && [ -n "$BAO_TOKEN" ] &&
+        keys=$(BAO_TOKEN=$BAO_TOKEN bao kv get -field=authorized_keys "$SSH_KEYS_PATH" 2>/dev/null); then
         mkdir -p -m 700 ~/.ssh
         umask 077
         printf '%s\n' "$keys" > ~/.ssh/authorized_keys
@@ -43,7 +60,10 @@ while [ "$tries" -gt 0 ]; do
         exit 0
     fi
     tries=$((tries - 1))
-    log "cannot read $SSH_KEYS_PATH yet, retrying ($tries tries left)"
+    if [ -z "$said_waiting" ]; then
+        said_waiting=1
+        log "no token in $VAULT_DIR/devbox.token yet, or $SSH_KEYS_PATH is not readable - retrying"
+    fi
     sleep 2
 done
 

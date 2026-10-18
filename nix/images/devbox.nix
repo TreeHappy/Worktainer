@@ -130,6 +130,12 @@ let
       pkgs.less
       pkgs.lesspipe
       pkgs.openssh # sshd and ssh-keygen
+      # openssl's CLI, for `bin/sandbox check`: it is the thing that actually
+      # verifies a certificate chain in this image, and the only way to ask
+      # "does the trust store contain this exact certificate" rather than
+      # "is some certificate with this subject trusted" (audit S7). Small, and a
+      # normal thing to want in a development environment anyway.
+      pkgs.openssl
       pkgs.which
       homeTree
     ]

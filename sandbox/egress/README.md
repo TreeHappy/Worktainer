@@ -216,7 +216,8 @@ already baked in.
 
 2. Add a job to `HEADER_JOBS` in
    [`environments/egress.env`](../quadlet/environments/egress.env)
-   (semicolon-separated — an env file cannot hold newlines):
+   (semicolon-separated — an env file cannot hold newlines). The
+   `secret/egress/*` policy already covers it, so no token change:
 
    ```
    api.<provider>.com bao:secret/egress/<provider>
@@ -285,7 +286,9 @@ the container actually reads.
 | `BURST` / `LATENCY` | `64kbit` / `400ms` | tbf burst and latency |
 | `DNS_UPSTREAM` | `9.9.9.9` | resolver dnsmasq forwards to |
 | `HEADER_JOBS` | two providers in the env file | `"<host> bao:<mount>/<path>"` entries, `;`-separated; empty disables the proxy entirely |
-| `BAO_ADDR` / `BAO_TOKEN` | `http://10.89.1.20:8200` / `sandbox-root-token` | where the header values come from |
+| the token that reads them | `/vault/egress.token`, from a shared volume | scoped to `secret/egress/*` and to `read`; the root token is not in this container at all (audit S1) |
+| `BAO_ADDR` | `http://10.89.1.20:8200` | where the header values come from |
+| `VAULT_DIR` | `/vault` | where this controller's scoped token is; read at boot into `BAO_TOKEN` for mitmdump |
 | `BAO_RESYNC` | `300` | seconds between secret re-reads; `0` reads once at boot |
 | `PROXY_PORT` | `8080` | mitmdump's listen port, and the redirect target |
 | `PROXY_CONF_DIR` | `/var/lib/mitmproxy` | where the staged CA lives |

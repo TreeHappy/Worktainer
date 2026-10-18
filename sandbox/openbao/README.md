@@ -24,31 +24,63 @@ throwaway sandbox wants and what nothing else does:
   note) outside the sandbox. The devbox re-reads `authorized_keys` on its next
   boot, so a wiped server and a restarted devbox mean "no keys, nobody gets
   in" — the safe direction to fail in.
-- **One root token, printed nowhere.** `BAO_DEV_ROOT_TOKEN_ID` pins it to
+- **One root token, used only to bootstrap.** `BAO_DEV_ROOT_TOKEN_ID` pins it to
   `sandbox-root-token` ([`environments/openbao.env`](../quadlet/environments/openbao.env))
-  so the clients and the docs can hardcode
-  it; the upstream `-dev-no-store-token` keeps it out of the container's
-  filesystem.
-- **Plain HTTP, no seal, no policies, no audit device.** Nothing is encrypted
-  at rest (there is no "at rest"), every request is a root token, and every
-  write is logged nowhere. That is fine for a port published on loopback and a
-  database that lives in memory; it is not a vault for anything you care about.
+  so [`provision.sh`](./provision.sh) can use it at boot; the upstream
+  `-dev-no-store-token` keeps it out of the container's filesystem. **Neither
+  the devbox nor the egress ever sees it** — see below.
+- **Plain HTTP, no seal, no audit device.** Nothing is encrypted at rest (there
+  is no "at rest") and every write is logged nowhere. That is fine for a port
+  published on loopback and a database that lives in memory; it is not a vault
+  for anything you care about.
 
-**The token is in `sandbox/quadlet/environments/openbao.env`**, so anything that
-can read the repo can read
-and rewrite every secret. That is a deliberate trade: the sandbox models *egress
-shaping*, not defense against you. Do not put a real credential in here — put a
-credential scoped to a throwaway key, and rotate it like one.
+**Policies are scoped, even here.** In-memory storage means policies are gone on
+every restart, so [`provision.sh`](./provision.sh) writes them at every boot. That
+is not decoration: it is the fix for audit S1, where the root token sat in the
+devbox's environment and the agent could read it — and with it the provider key
+it was built not to have, and write its own SSH key.
+
+## Scoped tokens (audit S1)
+
+Each client gets a token that can read its own secret and nothing else. They are
+minted on every boot and handed over through a shared volume, so neither token
+is ever in a container's environment:
+
+| Token | Path it may read | Held by |
+| ----- | ---------------- | ------- |
+| `/vault/devbox.token` | `secret/data/devbox/authorized_keys` | the devbox, read-only mount |
+| `/vault/egress.token` | `secret/data/egress/*` | the egress, read-only mount |
+
+Both policies are `capabilities = ["read"]` on those paths and nothing else —
+no write, no list, no `sys/*`, no token minting. Verified against OpenBao 2.7.1
+that each token is refused with 403 for everything outside its own path, and that
+a devbox token cannot write `authorized_keys` even its own.
+
+Consequences worth stating:
+
+- `bin/sandbox exec devbox env | grep BAO_TOKEN` prints nothing.
+- `bin/sandbox check` asserts all of this against the running stack, so S1
+  cannot come back quietly.
+- The root token is still in the repo, in `environments/openbao.env`. That is the
+  remaining deliberate trade: anyone with the repo can read and rewrite every
+  secret. It is not the same finding — S1 was about the *agent*, which does not
+  have the repo. Do not put a real credential in here — put a credential scoped
+  to a throwaway key, and rotate it like one.
 
 ## Secrets layout
 
 KV v2 is mounted at `secret/` by default, so a secret's API path is
 `secret/<path>` and its CLI name is `secret/<path>`:
 
-| Path | Fields | Holds |
-| ---- | ------ | ----- |
-| `secret/devbox/authorized_keys` | `authorized_keys` | the whole `authorized_keys` file: one public key per line |
-| `secret/egress/<provider>` | one field per header, the field name being the header (`x-api-key`, …) | outbound auth for the egress's proxy |
+| Path | Fields | Who may read it | Holds |
+| ---- | ------ | --------------- | ----- |
+| `secret/devbox/authorized_keys` | `authorized_keys` | the devbox's token | the whole `authorized_keys` file: one public key per line |
+| `secret/egress/<provider>` | one field per header, the field name being the header (`x-api-key`, …) | the egress's token | outbound auth for the egress's proxy |
+
+Anything you add here is unreachable: both policies are exact paths, so a new
+secret needs a new policy in [`provision.sh`](./provision.sh) before either
+client can see it. That is deliberate — a policy is a decision, and adding a
+prefix to widen one is the kind of change that should be visible in a diff.
 
 Both are plain KV: no policy, no lease, no rotation machinery — write the new
 value, consumers pick it up.
@@ -69,8 +101,18 @@ curl -sS -X POST http://127.0.0.1:8200/v1/secret/data/devbox/authorized_keys \
 Several keys: repeat `authorized_keys` with a `\n` between them, or use the CLI
 below, which reads the file verbatim.
 
-From inside the devbox the `bao` CLI is in the image already, and `BAO_ADDR`
-/`BAO_TOKEN` are in its compose environment:
+From inside the devbox the `bao` CLI is in the image already, and `BAO_ADDR` is
+in its environment. `BAO_TOKEN` is **not** — the devbox's token is scoped to
+`secret/devbox/authorized_keys`, so use it explicitly:
+
+```sh
+bin/sandbox shell devbox
+export BAO_TOKEN=$(cat /vault/devbox.token)
+```
+
+With that token you can read that one path and nothing else — `bao kv list
+secret/` and `bao kv get secret/egress/anthropic` are both 403. Storing keys
+needs the root token from the host, which the recipes above use:
 
 ```sh
 bin/sandbox shell devbox
@@ -132,29 +174,32 @@ anywhere the agent can reach.** Concretely, a new consumer is
 1. a secret path (`secret/<service>/<thing>`), shaped for whoever reads it —
    field names as header names for the egress proxy, one whole-file field for
    the devbox's `authorized_keys`;
-2. the address (`BAO_ADDR`) and root token (`BAO_TOKEN`) in that container's
-   compose environment;
-3. a read path. `depends_on: [openbao]` only orders startup; a consumer that
-   starts early has to retry (as `sshd-init` and the egress proxy do).
+2. a policy in [`provision.sh`](./provision.sh) for exactly that path, and a
+   token minted from it into `/vault/<consumer>.token`;
+3. a read path, and the consumer reading its own token file rather than an
+   environment variable. `Requires=` on the openbao unit orders startup but does
+   not wait for the token to exist, so a consumer that starts early has to retry
+   — as `sshd-init` and the egress proxy both do.
 
 ### Changing the root token
 
-Three places hold it, and they have to change together or the container comes up
-with a token nobody has:
+One place holds it now, which is the improvement:
 
 | Where | Key |
 | ----- | --- |
 | `environments/openbao.env` | `BAO_DEV_ROOT_TOKEN_ID` |
-| `environments/devbox.env` | `BAO_TOKEN` |
-| `environments/egress.env` | `BAO_TOKEN` |
 
-Then `bin/sandbox up`. The token is not what protects anything here — the file
-is readable by anyone with the repo — it only stops anonymous writes.
+Then `bin/sandbox up`. `provision.sh` mints fresh scoped tokens from it on every
+boot, so there is nothing else to keep in step.
+
+The root token is not what protects anything here — the file is readable by
+anyone with the repo. It stops anonymous writes; scoping is what stops the
+agent.
 
 ### Moving the server
 
 `10.89.1.20` appears in five places: the address table in
-[`../README.md`](../README.md), the ingress `FORWARDS`/`ports`, and the
+[`../README.md`](../README.md), the ingress `FORWARDS`/`PublishPort=`, and the
 `BAO_ADDR` of the devbox and the egress (plus the default baked into
 `../dev/sshd-init.sh`). Change all of them; `bin/sandbox check` will tell you
 if you missed one.

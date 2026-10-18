@@ -39,7 +39,10 @@ import urllib.request
 log = logging.getLogger("auth_inject")
 
 BAO_ADDR = "http://10.89.1.20:8200"
-BAO_TOKEN = "sandbox-root-token"
+# Deliberately empty rather than the dev-mode root token: there is no fallback
+# that would be correct here, and a default that still *worked* is exactly how
+# the root token ended up in the container's environment in the first place.
+BAO_TOKEN = ""
 BAO_RESYNC = 300
 FETCH_TIMEOUT = 5
 

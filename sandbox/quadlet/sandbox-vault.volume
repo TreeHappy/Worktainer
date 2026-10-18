@@ -1,0 +1,16 @@
+# The scoped-token handoff.
+#
+# OpenBao runs in dev mode, so its storage is in memory: policies and tokens are
+# gone on every restart and have to be minted at every boot (see
+# ../openbao/provision.sh). The tokens are written here so the devbox and the
+# egress can read their own without either of them holding the root token
+# (audit S1).
+#
+#   devbox.token   read   secret/data/devbox/authorized_keys
+#   egress.token   read   secret/data/egress/*
+#
+# The volume is root-owned and both clients mount it read-only, so a token
+# cannot be replaced or re-read by whoever holds it. Nothing else is stored
+# here — no secret values, and no root token.
+[Volume]
+VolumeName=sandbox-vault

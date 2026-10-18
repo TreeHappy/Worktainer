@@ -41,6 +41,11 @@ EnvironmentFile=environments/egress.env
 # nothing in the image ever sees it (audit S2).
 Volume=./ca:/etc/sandbox/ca:ro
 
+# Its own token for OpenBao — read on secret/egress/* and nothing else, so a
+# stolen one buys the provider keys and not the devbox's SSH access. Minted per
+# boot by sandbox/openbao/provision.sh; dev-mode storage is in memory.
+Volume=sandbox-vault.volume:/vault:ro
+
 # Isolation, from the findings in todo/compare/06-workload-and-isolation.md.
 # mitmdump runs python in-process, so give it room to work.
 NoNewPrivileges=true
