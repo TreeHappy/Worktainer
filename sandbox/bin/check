@@ -218,9 +218,9 @@ else
     note "host port 8200 reaches openbao" "curl is not installed on this host"
 fi
 
-# The devbox ships an sshd (started by compose.yaml, listening on 2222 inside
-# the container). Its authorized keys come from OpenBao, so this checks the
-# listener and the key list — not a login, which needs a user key.
+# The devbox ships an sshd (started by sandbox-devbox.container, listening on
+# 2222 inside the container). Its authorized keys come from OpenBao, so this
+# checks the listener and the key list — not a login, which needs a user key.
 check "devbox sshd listens inside the container on 2222" \
     podman exec sandbox-devbox \
     bash -c 'exec 3<>/dev/tcp/127.0.0.1/2222'
