@@ -8,7 +8,10 @@
 #   2. it answers the devbox's DNS queries with dnsmasq, so name resolution
 #      crosses the egress boundary too;
 #   3. both the data-facing and WAN-facing links are shaped with tc;
-#   4. upload, download and DNS byte counters are exported as OTel spans.
+#   4. it decrypts the devbox's outbound https (it has to, to set auth headers)
+#      and injects values from OpenBao — see README.md;
+#   5. upload, download, DNS and proxied byte counters are exported as OTel
+#      spans.
 #
 # All of it is driven by environment variables (see compose.yaml for values).
 # Set DRY_RUN=1 to print the nftables ruleset it would install and exit —
@@ -33,6 +36,25 @@ set -eu
 : "${OTEL_SERVICE_NAME:=sandbox-egress}"
 : "${OTEL_ENDPOINTS:=}"            # space-separated OTLP/HTTP traces URLs
 
+# Auth-injecting TLS proxy (see README.md). Only armed when HEADER_JOBS names
+# at least one secret: without it the devbox's https goes straight out.
+: "${HEADER_JOBS:=}"               # "<host> bao:<mount>/<path>" per line
+: "${PROXY_PORT:=8080}"            # mitmdump's listen port, and the redirect target
+: "${PROXY_CONF_DIR:=/var/lib/mitmproxy}"   # where mitmproxy keeps its CA
+: "${CA_DIR:=/etc/sandbox/ca}"     # the sandbox CA, bind-mounted read-only
+: "${DEVBOX_IP:=10.89.1.10}"       # whose outbound 443 is intercepted
+: "${SANDBOX_NETS:=10.89.0.0/16}"  # sandbox-internal space: never intercepted
+: "${BAO_ADDR:=http://10.89.1.20:8200}"
+: "${BAO_TOKEN:=sandbox-root-token}"
+: "${BAO_RESYNC:=300}"             # seconds between secret re-reads; 0 = once
+: "${MITM_VERBOSITY:=info}"         # mitmdump log level; warn hides per-request lines
+
+if [ -n "$HEADER_JOBS" ]; then
+    PROXY_ARMED=1
+else
+    PROXY_ARMED=0
+fi
+
 log() { printf '%s egress: %s\n' "$(date -u +%H:%M:%S)" "$*" >&2; }
 
 # Print the interface that holds the given IPv4 address. Interfaces are found
@@ -49,6 +71,12 @@ sysctl_w() {
     if [ -w "/proc/sys/$1" ]; then
         printf '%s' "$2" > "/proc/sys/$1" 2>/dev/null || true
     fi
+}
+
+# Is anything listening on the proxy port? The local address column ends with
+# ":PORT", which is more reliable to match than a substring of the whole line.
+proxy_listening() {
+    ss -ltn 2>/dev/null | awk 'NR > 1 { print $4 }' | grep -q ":$PROXY_PORT\$"
 }
 
 # tc shaping: tbf caps the rate, netem adds delay/loss when configured.
@@ -98,6 +126,9 @@ fi
 #     addressed to this container rather than through it;
 #   * forward: `up` is what enters from the data link, `down` what leaves for
 #     it;
+#   * prerouting: hands the devbox's outbound https to the local proxy. It
+#     counts there (`proxied`), so it sees requests only, not replies — the
+#     reply bytes are counted by `down` on the way back;
 #   * postrouting: rewrites the source to this container's WAN address, so the
 #     reply comes back here and conntrack can route it on to the devbox.
 # --------------------------------------------------------------------------
@@ -107,6 +138,9 @@ RULES=/tmp/egress.nft
     echo '    counter up {}'
     echo '    counter down {}'
     echo '    counter dns {}'
+    if [ "$PROXY_ARMED" -eq 1 ]; then
+        echo '    counter proxied {}'
+    fi
     echo ''
     echo '    chain dns_queries {'
     echo '        type filter hook input priority filter; policy accept;'
@@ -119,6 +153,14 @@ RULES=/tmp/egress.nft
     printf '        iifname "%s" counter name up\n' "$DATA_IF"
     printf '        oifname "%s" counter name down\n' "$DATA_IF"
     echo '    }'
+    if [ "$PROXY_ARMED" -eq 1 ]; then
+        echo ''
+        echo '    chain prerouting {'
+        echo '        type nat hook prerouting priority dstnat; policy accept;'
+        printf '        ip saddr %s ip daddr != %s tcp dport 443 counter name proxied redirect to :%s\n' \
+            "$DEVBOX_IP" "$SANDBOX_NETS" "$PROXY_PORT"
+        echo '    }'
+    fi
     echo ''
     echo '    chain postrouting {'
     echo '        type nat hook postrouting priority srcnat; policy accept;'
@@ -163,19 +205,71 @@ dnsmasq --conf-file=/etc/dnsmasq.conf \
         --pid-file=/run/dnsmasq.pid
 log "dnsmasq on $DATA_IF forwarding to $DNS_UPSTREAM"
 
+# --------------------------------------------------------------------------
+# 4. The auth-injecting TLS proxy, started before the redirect goes in — a
+#    request in the window between the rule and the listener would be sent to a
+#    closed port.
+# --------------------------------------------------------------------------
+PROXY_PID=
+if [ "$PROXY_ARMED" -eq 1 ]; then
+    # mitmproxy keeps its CA in <confdir>/mitmproxy-ca.pem as key+certificate
+    # (and the bare certificate in mitmproxy-ca-cert.pem). Stage the sandbox
+    # pair there, so the devbox only ever has to trust the sandbox CA.
+    mkdir -p "$PROXY_CONF_DIR"
+    if [ -f "$CA_DIR/sandbox-ca.key" ] && [ -f "$CA_DIR/sandbox-ca.crt" ]; then
+        cat "$CA_DIR/sandbox-ca.key" "$CA_DIR/sandbox-ca.crt" \
+            > "$PROXY_CONF_DIR/mitmproxy-ca.pem"
+        cp "$CA_DIR/sandbox-ca.crt" "$PROXY_CONF_DIR/mitmproxy-ca-cert.pem"
+        chmod 600 "$PROXY_CONF_DIR/mitmproxy-ca.pem"
+        log "staged the sandbox CA from $CA_DIR into $PROXY_CONF_DIR"
+    else
+        log "no CA in $CA_DIR (run bin/sandbox ca): mitmproxy will mint its own, which the devbox does not trust"
+    fi
+
+    # Header values are read from OpenBao by the addon itself, on a timer —
+    # never on the request path. MITM_VERBOSITY=warn silences mitmdump's
+    # per-request lines (and the addon's secret reads with them).
+    BAO_ADDR="$BAO_ADDR" \
+    BAO_TOKEN="$BAO_TOKEN" \
+    HEADER_JOBS="$HEADER_JOBS" \
+    BAO_RESYNC="$BAO_RESYNC" \
+        mitmdump \
+            --listen-host 0.0.0.0 \
+            --listen-port "$PROXY_PORT" \
+            --set confdir="$PROXY_CONF_DIR" \
+            --set termlog_verbosity="$MITM_VERBOSITY" \
+            -s /usr/local/bin/auth_inject.py &
+    PROXY_PID=$!
+
+    waited=0
+    while ! proxy_listening; do
+        kill -0 "$PROXY_PID" 2>/dev/null || break
+        waited=$((waited + 1))
+        [ "$waited" -ge 50 ] && break
+        sleep 0.2
+    done
+    if proxy_listening; then
+        log "auth proxy on :$PROXY_PORT (headers from $BAO_ADDR, resync ${BAO_RESYNC}s)"
+    else
+        log "the auth proxy never listened on :$PROXY_PORT; the devbox's https will fail until it does"
+    fi
+else
+    log "HEADER_JOBS is empty: outbound https from the devbox is not intercepted"
+fi
+
 nft delete table inet egress 2>/dev/null || true
 nft -f "$RULES"
-log "installed masquerade on $WAN_IF and up/down/dns counters"
+log "installed masquerade on $WAN_IF and up/down/dns counters$([ "$PROXY_ARMED" -eq 1 ] && printf ' plus the proxied redirect')"
 
 # --------------------------------------------------------------------------
-# 4. Shaping: the WAN link limits the upload, the data link limits what the
+# 5. Shaping: the WAN link limits the upload, the data link limits what the
 #    devbox can pull down.
 # --------------------------------------------------------------------------
 shape "$WAN_IF" "$UP_RATE" "wan (upload)"
 shape "$DATA_IF" "$DOWN_RATE" "devbox (download)"
 
 # --------------------------------------------------------------------------
-# 5. Export counters as OTel spans, then stay in the foreground.
+# 6. Export counters as OTel spans, then stay in the foreground.
 # --------------------------------------------------------------------------
 OTEL_SERVICE_NAME="$OTEL_SERVICE_NAME" \
 OTEL_ENDPOINTS="$OTEL_ENDPOINTS" \
@@ -183,6 +277,24 @@ METRICS_INTERVAL="$METRICS_INTERVAL" \
     /usr/local/bin/metrics.sh &
 METRICS_PID=$!
 
+cleanup() {
+    kill "$METRICS_PID" 2>/dev/null || true
+    if [ -n "$PROXY_PID" ]; then
+        kill "$PROXY_PID" 2>/dev/null || true
+    fi
+    kill "$(cat /run/dnsmasq.pid 2>/dev/null)" 2>/dev/null || true
+}
+
 log "ready (metrics every ${METRICS_INTERVAL}s)"
-trap 'kill "$METRICS_PID" 2>/dev/null || true; kill "$(cat /run/dnsmasq.pid 2>/dev/null)" 2>/dev/null || true' TERM INT
-wait "$METRICS_PID"
+trap 'cleanup; exit 0' TERM INT
+
+# A dead proxy is silent from out here — every devbox https request would just
+# fail to reach a closed port — so watch for it and let the restart policy
+# bring the whole egress back rather than leaving the devbox offline.
+while :; do
+    if [ -n "$PROXY_PID" ] && ! kill -0 "$PROXY_PID" 2>/dev/null; then
+        log "the auth proxy died; exiting so the container restarts with it"
+        exit 1
+    fi
+    sleep 5
+done

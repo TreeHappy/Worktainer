@@ -112,11 +112,26 @@ services:
       DELAY: 0ms
       LOSS: 0%
       DNS_UPSTREAM: 9.9.9.9
+      # Auth injection (see egress/README.md). The proxy decrypts the devbox's
+      # outbound https in order to set these headers, which it re-reads from
+      # OpenBao every BAO_RESYNC seconds. "<host> bao:<mount>/<path>", one per
+      # line: the field names in that KV v2 secret are the header names.
+      BAO_ADDR: http://10.89.1.20:8200
+      BAO_TOKEN: sandbox-root-token
+      BAO_RESYNC: 300
+      HEADER_JOBS: >-
+        api.anthropic.com bao:secret/egress/anthropic
+        api.openai.com bao:secret/egress/openai
       OTEL_SERVICE_NAME: sandbox-egress
       OTEL_ENDPOINTS: >-
         http://10.89.0.20/v1/traces
         http://10.89.0.21:4318/v1/traces
         http://10.89.0.22:4318/v1/traces
+    volumes:
+      # The sandbox CA, which the proxy signs what it presents to the devbox
+      # with. Read-only: the container stages its own copy into mitmproxy's
+      # confdir and never writes back.
+      - ./ca:/etc/sandbox/ca:ro
     networks:
       ctrl:
         ipv4_address: 10.89.0.2
@@ -124,6 +139,8 @@ services:
         ipv4_address: 10.89.1.2
       wan:
         ipv4_address: 10.89.2.2
+    depends_on:
+      - openbao
     restart: unless-stopped
 
   # ------------------------------------------------------------------------

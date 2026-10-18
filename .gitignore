@@ -1,5 +1,10 @@
 # The sandbox CA (sandbox/ca/) is generated per machine by `bin/sandbox ca`:
 # the private key must never reach the repo, and the certificate is useless
-# elsewhere. The folder's README is tracked — only the material is not.
-sandbox/ca/*.crt
-sandbox/ca/*.key
+# elsewhere. The folder's README is tracked — only the generated material is
+# not, whatever openssl happens to leave next to it (.crt, .key, .srl …).
+sandbox/ca/*
+!sandbox/ca/README.md
+
+# Python bytecode, e.g. from a local py_compile of the egress's addon.
+__pycache__/
+*.pyc

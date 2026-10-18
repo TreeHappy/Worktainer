@@ -138,6 +138,42 @@ else
     bad "egress shapes both links (tbf)"
 fi
 
+# The auth-injecting proxy: all three have to be true or the devbox's https is
+# either intercepted with nothing listening or trusted by nobody.
+if podman exec sandbox-egress pgrep -f mitmdump >/dev/null 2>&1; then
+    ok "egress runs the auth proxy (mitmdump)"
+else
+    bad "egress runs the auth proxy (mitmdump)" \
+        "see 'bin/sandbox logs egress' and egress/README.md -> Troubleshooting"
+fi
+
+if podman exec sandbox-egress nft list counters 2>/dev/null \
+    | grep -q 'counter proxied'; then
+    ok "egress counter 'proxied' present"
+else
+    note "egress counter 'proxied' present" \
+        "HEADER_JOBS is empty, so outbound https is not intercepted at all"
+fi
+
+if podman exec sandbox-egress nft list ruleset 2>/dev/null \
+    | grep -q 'redirect to :8080'; then
+    ok "egress redirects the devbox's https to the proxy"
+else
+    bad "egress redirects the devbox's https to the proxy"
+fi
+
+# The devbox trusts the sandbox CA (it is baked into the image), which is what
+# lets the proxy present a certificate the devbox accepts. python's default
+# context reads the system store, so asking it is the same question curl asks.
+if podman exec sandbox-devbox python3 -c \
+    'import ssl, sys; sys.exit(0 if any("sandbox-ca" in str(c.get("subject", ())) for c in ssl.create_default_context().get_ca_certs()) else 1)' \
+    >/dev/null 2>&1; then
+    ok "devbox trusts the sandbox CA"
+else
+    bad "devbox trusts the sandbox CA" \
+        "run bin/sandbox ca, then bin/sandbox build (the certificate is baked in)"
+fi
+
 echo
 echo "== reaching the sandbox from the host =="
 for port in 9419 9420 9421; do

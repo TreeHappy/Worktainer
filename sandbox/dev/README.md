@@ -100,6 +100,31 @@ changed fingerprint and drop the stale `[127.0.0.1]:2222` line from your
 is no root to read `/etc/shadow`, and PAM is off — the config is
 [`dotfiles/sshd/sshd_config`](../../dotfiles/sshd/sshd_config).
 
+## Talking out through the proxy
+
+Everything the devbox sends to the internet leaves through the egress. For
+`https` that includes the auth-injecting proxy: the devbox trusts the sandbox CA
+(baked in above), so the egress can read what it sends and put an API key on it
+that the devbox never holds. Nothing to configure here — but two things are
+worth knowing:
+
+- **The key is never in the devbox.** If the agent asks for an API key, it does
+  not get one; the proxy adds it on the way out. See
+  [`../egress/README.md`](../egress/README.md) for which hosts get which
+  headers, and how to add a provider.
+- **Tools that ignore the system trust store need pointing at it.** Node ships
+  its own root list and Python's `requests` uses certifi, so compose sets
+  `NODE_EXTRA_CA_CERTS` and `REQUESTS_CA_BUNDLE` for the whole container. A tool
+  that does something else again (a bundled Go root set, a JVM truststore) needs
+  the same treatment, or it will refuse every intercepted call.
+
+To route one command through the proxy explicitly — useful when debugging, and
+for traffic the redirect does not cover:
+
+```sh
+bin/sandbox exec devbox env HTTPS_PROXY=http://10.89.1.2:8080 curl -sSv https://api.openai.com/v1/models
+```
+
 ## Editing the config
 
 Add tools and dotfiles to `dotfiles/` (the sources) and list them in

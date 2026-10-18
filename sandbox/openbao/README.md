@@ -118,3 +118,60 @@ Wiping the server is just a restart; re-seeding is the recipe above:
 ```sh
 podman restart sandbox-openbao
 ```
+
+## Configuring it later
+
+### Adding a consumer
+
+The pattern is the same whatever reads the secret: **address it by URL from the
+container that needs it, read it at boot or on a timer, and never write it
+anywhere the agent can reach.** Concretely, a new consumer is
+
+1. a secret path (`secret/<service>/<thing>`), shaped for whoever reads it —
+   field names as header names for the egress proxy, one whole-file field for
+   the devbox's `authorized_keys`;
+2. the address (`BAO_ADDR`) and root token (`BAO_TOKEN`) in that container's
+   compose environment;
+3. a read path. `depends_on: [openbao]` only orders startup; a consumer that
+   starts early has to retry (as `sshd-init` and the egress proxy do).
+
+### Changing the root token
+
+Three places hold it, and they have to change together or the container comes up
+with a token nobody has:
+
+| Where | Key |
+| ----- | --- |
+| `compose.yaml`, `openbao` service | `BAO_DEV_ROOT_TOKEN_ID` |
+| `compose.yaml`, `devbox` service | `BAO_TOKEN` |
+| `compose.yaml`, `egress` service | `BAO_TOKEN` |
+
+Then `bin/sandbox up`. The token is not what protects anything here — the file
+is readable by anyone with the repo — it only stops anonymous writes.
+
+### Moving the server
+
+`10.89.1.20` appears in five places: the address table in
+[`../README.md`](../README.md), the ingress `FORWARDS`/`ports`, and the
+`BAO_ADDR` of the devbox and the egress (plus the default baked into
+`../dev/sshd-init.sh`). Change all of them; `bin/sandbox check` will tell you
+if you missed one.
+
+### Making secrets survive a restart
+
+Not supported as configured, and deliberately so: dev mode keeps everything in
+memory. Keep the canonical copy of a secret outside the sandbox and re-`kv put`
+it after a restart — that is what the recipes above are for. If you need
+persistence, this container has to stop being a dev server (a file or Consul
+backend, `BAO_DEV_ROOT_TOKEN_ID` gone, real policies), which is a different
+container and a different threat model.
+
+### Looking around
+
+```sh
+bao kv list secret/                       # what exists
+bao kv get secret/devbox/authorized_keys  # one entry (mind the trailing newline)
+curl -s http://127.0.0.1:8200/v1/sys/health | jq   # 200 = active
+```
+
+The web UI at <http://127.0.0.1:8200/ui> shows the same thing with click-through.
