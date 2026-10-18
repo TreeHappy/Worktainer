@@ -15,7 +15,7 @@ keeping once the todo is retired.
 
 ## The two decisions, taken
 
-1. **Images are fully Nix.** `nix build .#sandbox-ingress` →
+1. **Images are fully Nix.** `nix build ./nix#sandbox-ingress` →
    `podman load`. No `FROM`, no distro, no layer cache — every package and every
    byte of config comes out of a lockfile. The alternative (keep the distro,
    copy a nix closure in) is a smaller change and a smaller guarantee; the ask
@@ -51,11 +51,12 @@ repo root, or `nix build` inside `nix/`.
 
 `[tools]` in `mise.toml` holds **27** entries, not 28; the devbox's copy holds 28
 because it adds `openbao`. Every one was checked against nixpkgs
-(`nixos-unstable` @ `fe13242`, 2026-10-15) by evaluating it. **23 map to
-themselves, four map to a different attribute, one is not packaged at all.**
+(`nixos-unstable` @ `fe13242`, 2026-10-15) by evaluating it. **Of the 27, 21
+keep their attribute name, five resolve to a different one, and one is not
+packaged at all.**
 
-The four that move are the ones to read twice — each is a name that resolves to
-something real and wrong:
+The five that move are the ones to read twice — each is a name that resolves to
+something real and, in two cases, wrong:
 
 | mise.toml | nixpkgs | Why not the same name |
 | --------- | ------- | --------------------- |
@@ -63,6 +64,10 @@ something real and wrong:
 | `yq` | **`yq-go`** | nixpkgs `yq` is the Python one; mise's is mikefarah's Go tool |
 | `github:RivoLink/leaf` | **`leaf-markdown-viewer`** | renamed upstream, same project (`leaf.rivolink.mg`) |
 | `pi` | **`pi-coding-agent`** | renamed upstream, same project (pi.dev) |
+| `node` | `nodejs_22` | not `nodejs`: the unqualified attribute is a moving default, so pinning it would defeat the point of pinning |
+
+Only the first two install the wrong tool. The other three are the right tool
+under a name the mise list never had to spell.
 
 And one gap:
 
@@ -70,18 +75,15 @@ And one gap:
 | --------- | ------- | ---------- |
 | `workmux` | *nothing* | not packaged. It is Rust and [ships its own flake](https://github.com/raine/workmux), so it becomes a flake **input** — pinned by `flake.lock` like everything else, at the cost of tracking upstream |
 
-`node` maps to `nodejs_22` rather than `nodejs`: the unqualified attribute is a
-moving default, so pinning it would defeat the point of pinning.
-
 Everything else is `atuin`, `bat`, `carapace`, `duf`, `dust`, `eza`, `fd`, `fzf`,
 `gh`, `hunk`, `jjui`, `jq`, `lazygit`, `neovim`, `opencode`, `openbao`,
 `procs`, `ripgrep`, `starship`, `yazi`, `zellij`, `zoxide` — verified
 individually, not assumed from the name.
 
 **This forces `modules/tools.nix` to be an attrset, not a list of strings.** A
-`map (name: pkgs.${name})` over the mise list gets four of the twenty-seven
-wrong, and every one of them builds successfully. That is the single most
-important thing this directory records.
+`map (name: pkgs.${name})` over the mise list gets five of the twenty-seven
+wrong, and all five produce a working binary — `pkgs.jj` and `pkgs.yq` both
+build, they are just the wrong programs. There is no failure to notice.
 
 Versions at the time of checking, which is what `flake.lock` will freeze:
 
