@@ -104,16 +104,22 @@ This closes audit **S4** — every one of those 27 tools is currently pinned to
 ## Configuration
 
 The load-bearing idea, and the one that preserves the repo's existing
-single-source property: the 19 files under `dotfiles/` are written **once**, as
-Nix literals in `modules/tools/*.nix`, and consumed by both the host
-(home-manager symlinks or copies into `$HOME`) and the images (files written at
-build time). Today `mise.toml` and `dotfiles/` provide that; after this,
-`nix/configs/` does.
+single-source property: the 27 files under `dotfiles/` are written **once**, as
+Nix literals, and consumed by both the host (home-manager, into `$HOME`) and the
+images (files written at build time). Today `mise.toml` and `dotfiles/` provide
+that; afterwards `nix/configs/` does. `nix/modules/tools/*.nix` are the
+per-tool modules that install them — one per themed tool, so a change to one
+tool's config cannot drag in the other fourteen.
 
 - **Host**: 16 targets, deployed by home-manager.
 - **Devbox**: those 16 plus `~/.ssh/sshd/sshd_config`, written into the image.
   No home-manager inside the image — the config is fixed at build time, so it is
   just files.
+
+The 27 files are uneven: `yazi/` alone is seven (a theme and six flavors),
+`opencode/`, `pi/`, `jjui/`, `leaf/` and `bat/` are two each, and the rest are
+one apiece. The count matters because it is the migration's checklist — 27 files
+to reproduce and diff, not the 19 the todo estimates.
 
 Convert one tool first and diff the generated file against the tracked one
 before deleting anything. The tracked files are the reference; they are what the
