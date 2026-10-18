@@ -220,13 +220,18 @@ clean)
     systemctl --user stop $(units) 2>/dev/null || true
     # The volumes are .volume units now; deleting the network units is their
     # NetworkDeleteOnStop=true, which already happened above.
-    for volume in o11ylite-data otel-desktop-viewer-data otelop-data; do
+    #
+    # sandbox-vault goes with them: it holds the scoped OpenBao tokens, which are
+    # worthless once the server that minted them is gone, but are worth removing
+    # all the same rather than leaving a file of credentials on disk.
+    for volume in o11ylite-data otel-desktop-viewer-data otelop-data sandbox-vault; do
         podman volume rm -f "$volume" 2>/dev/null || true
     done
     systemctl --user stop \
         o11ylite-data-volume.service \
         otel-desktop-viewer-data-volume.service \
-        otelop-data-volume.service 2>/dev/null || true
+        otelop-data-volume.service \
+        sandbox-vault-volume.service 2>/dev/null || true
     for image in sandbox-ingress sandbox-egress sandbox-devbox; do
         podman rmi -f "localhost/$image:latest" 2>/dev/null || true
     done
